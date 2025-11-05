@@ -11,7 +11,7 @@ from __future__ import annotations
 import asyncio
 import time
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, cast
 
 from pydantic_ai import Agent
 
@@ -87,7 +87,7 @@ class BaseAgent(ABC):
         self.dependencies = dependencies or AgentDependencies()
         self.status = AgentStatus.IDLE
         self.history = ExecutionHistory()
-        self._agent: Agent | None = None
+        self._agent: Agent[AgentDependencies, str] | None = None
 
         # Initialize Pydantic AI agent
         self._initialize_agent(system_prompt, instructions)
@@ -95,7 +95,7 @@ class BaseAgent(ABC):
     def _initialize_agent(self, system_prompt: str | None, instructions: str | None):
         """Initialize the Pydantic AI agent."""
         try:
-            self._agent = Agent(
+            self._agent = Agent[AgentDependencies, str](
                 self.model_name,
                 deps_type=AgentDependencies,
                 system_prompt=system_prompt or self._get_default_system_prompt(),
@@ -359,6 +359,8 @@ class ExecutorAgent(BaseAgent):
 
     def _register_tools(self):
         """Register execution tools."""
+        if self._agent is None:
+            return
         # Register all available tools
         for tool_name in registry.list():
             try:
@@ -458,6 +460,8 @@ class SearchAgent(BaseAgent):
 
     def _register_tools(self):
         """Register search tools."""
+        if self._agent is None:
+            return
         try:
             from .src.tools.websearch_tools import ChunkedSearchTool, WebSearchTool
 
@@ -493,6 +497,8 @@ class RAGAgent(BaseAgent):
 
     def _register_tools(self):
         """Register RAG tools."""
+        if self._agent is None:
+            return
         try:
             from .src.tools.integrated_search_tools import (
                 IntegratedSearchTool,
@@ -533,6 +539,8 @@ class BioinformaticsAgent(BaseAgent):
 
     def _register_tools(self):
         """Register bioinformatics tools."""
+        if self._agent is None:
+            return
         try:
             from .src.tools.bioinformatics_tools import (
                 BioinformaticsFusionTool,
@@ -592,6 +600,8 @@ class DeepSearchAgent(BaseAgent):
 
     def _register_tools(self):
         """Register deep search tools."""
+        if self._agent is None:
+            return
         try:
             from .src.tools.deepsearch_tools import (
                 AnswerGeneratorTool,
@@ -646,6 +656,8 @@ class EvaluatorAgent(BaseAgent):
 
     def _register_tools(self):
         """Register evaluation tools."""
+        if self._agent is None:
+            return
         try:
             from .src.tools.workflow_tools import ErrorAnalyzerTool, EvaluatorTool
 
@@ -702,6 +714,8 @@ class DeepAgentPlanningAgent(BaseAgent):
 
     def _register_tools(self):
         """Register planning tools."""
+        if self._agent is None:
+            return
         try:
             from .src.tools.deep_agent_tools import task_tool, write_todos_tool
 
@@ -761,6 +775,8 @@ class DeepAgentFilesystemAgent(BaseAgent):
 
     def _register_tools(self):
         """Register filesystem tools."""
+        if self._agent is None:
+            return
         try:
             from .src.tools.deep_agent_tools import (
                 edit_file_tool,
@@ -824,6 +840,8 @@ class DeepAgentResearchAgent(BaseAgent):
 
     def _register_tools(self):
         """Register research tools."""
+        if self._agent is None:
+            return
         try:
             from .src.tools.deep_agent_tools import task_tool
             from .src.tools.integrated_search_tools import RAGSearchTool
@@ -896,6 +914,8 @@ class DeepAgentOrchestrationAgent(BaseAgent):
 
     def _register_tools(self):
         """Register orchestration tools."""
+        if self._agent is None:
+            return
         try:
             from .src.tools.deep_agent_tools import task_tool
 
@@ -968,6 +988,8 @@ class DeepAgentGeneralAgent(BaseAgent):
 
     def _register_tools(self):
         """Register general tools."""
+        if self._agent is None:
+            return
         try:
             from .src.tools.deep_agent_tools import (
                 list_files_tool,
@@ -1057,11 +1079,11 @@ class MultiAgentOrchestrator:
         try:
             # Step 1: Parse the question
             parser = self.agents[AgentType.PARSER]
-            parsed = await parser.parse_question(question)
+            parsed = await cast("ParserAgent", parser).parse_question(question)
 
             # Step 2: Create execution plan
             planner = self.agents[AgentType.PLANNER]
-            plan = await planner.create_plan(parsed)
+            plan = await cast("PlannerAgent", planner).create_plan(parsed)
 
             # Step 3: Execute based on workflow type
             if workflow_type == "bioinformatics":
@@ -1079,7 +1101,9 @@ class MultiAgentOrchestrator:
 
             # Step 4: Evaluate results
             evaluator = self.agents[AgentType.EVALUATOR]
-            evaluation = await evaluator.evaluate(question, result.get("answer", ""))
+            evaluation = await cast("EvaluatorAgent", evaluator).evaluate(
+                question, result.get("answer", "")
+            )
 
             execution_time = time.time() - start_time
 
@@ -1109,7 +1133,7 @@ class MultiAgentOrchestrator:
     ) -> dict[str, Any]:
         """Execute standard research workflow."""
         executor = self.agents[AgentType.EXECUTOR]
-        return await executor.execute_plan(plan, self.history)
+        return await cast("ExecutorAgent", executor).execute_plan(plan, self.history)
 
     async def _execute_bioinformatics_workflow(
         self, question: str, _parsed: dict[str, Any], _plan: list[dict[str, Any]]
@@ -1126,7 +1150,9 @@ class MultiAgentOrchestrator:
         )
 
         # Fuse data
-        fused_dataset = await bioinformatics_agent.fuse_data(fusion_request)
+        fused_dataset = await cast(
+            "BioinformaticsAgent", bioinformatics_agent
+        ).fuse_data(fusion_request)
 
         # Create reasoning task
         reasoning_task = ReasoningTask(
@@ -1137,12 +1163,12 @@ class MultiAgentOrchestrator:
         )
 
         # Perform reasoning
-        reasoning_result = await bioinformatics_agent.perform_reasoning(
-            reasoning_task, fused_dataset
-        )
+        reasoning_result = await cast(
+            "BioinformaticsAgent", bioinformatics_agent
+        ).perform_reasoning(reasoning_task, fused_dataset)
 
         return {
-            "fused_dataset": fused_dataset.dict(),
+            "fused_dataset": fused_dataset.model_dump(),
             "reasoning_result": reasoning_result,
             "answer": reasoning_result.get("answer", "No answer generated"),
         }
@@ -1152,7 +1178,7 @@ class MultiAgentOrchestrator:
     ) -> dict[str, Any]:
         """Execute deep search workflow."""
         deepsearch_agent = self.agents[AgentType.DEEPSEARCH]
-        return await deepsearch_agent.deep_search(question)
+        return await cast("DeepSearchAgent", deepsearch_agent).deep_search(question)
 
     async def _execute_rag_workflow(
         self, question: str, _parsed: dict[str, Any], _plan: list[dict[str, Any]]
@@ -1164,10 +1190,10 @@ class MultiAgentOrchestrator:
         rag_query = RAGQuery(text=question, top_k=5)
 
         # Perform RAG query
-        rag_response = await rag_agent.query(rag_query)
+        rag_response = await cast("RAGAgent", rag_agent).query(rag_query)
 
         return {
-            "rag_response": rag_response.dict(),
+            "rag_response": rag_response.model_dump(),
             "answer": rag_response.generated_answer or "No answer generated",
         }
 
@@ -1188,14 +1214,18 @@ class MultiAgentOrchestrator:
         # Use general DeepAgent for orchestration
         if AgentType.DEEP_AGENT_GENERAL in self.agents:
             general_agent = self.agents[AgentType.DEEP_AGENT_GENERAL]
-            result = await general_agent.handle_general_task(question, initial_state)
+            result = await cast(
+                "DeepAgentGeneralAgent", general_agent
+            ).handle_general_task(question, initial_state)
 
             if result.success:
                 return {
                     "deep_agent_result": result.result,
                     "answer": result.result.get(
                         "final_result", "DeepAgent workflow completed"
-                    ),
+                    )
+                    if result.result is not None
+                    else "DeepAgent workflow completed",
                     "execution_metadata": {
                         "execution_time": result.execution_time,
                         "tools_used": result.tools_used,
@@ -1206,16 +1236,18 @@ class MultiAgentOrchestrator:
         # Fallback to orchestration agent
         if AgentType.DEEP_AGENT_ORCHESTRATION in self.agents:
             orchestration_agent = self.agents[AgentType.DEEP_AGENT_ORCHESTRATION]
-            result = await orchestration_agent.orchestrate_tasks(
-                question, initial_state
-            )
+            result = await cast(
+                "DeepAgentOrchestrationAgent", orchestration_agent
+            ).orchestrate_tasks(question, initial_state)
 
             if result.success:
                 return {
                     "deep_agent_result": result.result,
                     "answer": result.result.get(
                         "result_synthesis", "DeepAgent orchestration completed"
-                    ),
+                    )
+                    if result.result is not None
+                    else "DeepAgent orchestration completed",
                     "execution_metadata": {
                         "execution_time": result.execution_time,
                         "tools_used": result.tools_used,

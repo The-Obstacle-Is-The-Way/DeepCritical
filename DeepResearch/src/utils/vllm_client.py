@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -77,6 +77,25 @@ class VLLMClient(BaseModel):
             }
         },
     )
+
+    # Stub methods for type checking - VLLMAgent expects these
+    # In practice, VLLMAgent should implement actual HTTP calls
+    async def chat_completions(
+        self, request: ChatCompletionRequest
+    ) -> ChatCompletionResponse:
+        """Stub method - should be implemented by actual client."""
+        msg = "Not implemented - use VLLMAgent wrapper"
+        raise NotImplementedError(msg)
+
+    async def completions(self, request: CompletionRequest) -> CompletionResponse:
+        """Stub method - should be implemented by actual client."""
+        msg = "Not implemented - use VLLMAgent wrapper"
+        raise NotImplementedError(msg)
+
+    async def embeddings(self, request: EmbeddingRequest) -> EmbeddingResponse:
+        """Stub method - should be implemented by actual client."""
+        msg = "Not implemented - use VLLMAgent wrapper"
+        raise NotImplementedError(msg)
 
 
 class VLLMAgent:
@@ -204,10 +223,10 @@ class VLLMAgent:
 
     async def completions(self, request: CompletionRequest) -> CompletionResponse:
         """Create completion (OpenAI-compatible)."""
-        response_text = await self.complete(request.prompt)
         prompt_text = (
             request.prompt if isinstance(request.prompt, str) else str(request.prompt)
         )
+        response_text = await self.complete(prompt_text)
         return CompletionResponse(
             id=f"cmpl-{asyncio.get_event_loop().time()}",
             object="text_completion",
@@ -242,13 +261,18 @@ class VLLMAgent:
 
     async def batch_request(self, request: BatchRequest) -> BatchResponse:
         """Process batch request."""
+        from DeepResearch.src.datatypes.vllm_dataclass import (
+            ChatCompletionRequest,
+            CompletionRequest,
+        )
+
         # Simple implementation - process sequentially
         results = []
         for req in request.requests:
-            if hasattr(req, "messages"):  # Chat completion
+            if isinstance(req, ChatCompletionRequest):
                 result = await self.chat_completions(req)
                 results.append(result)
-            elif hasattr(req, "prompt"):  # Completion
+            elif isinstance(req, CompletionRequest):
                 result = await self.completions(req)
                 results.append(result)
 
@@ -393,7 +417,14 @@ class VLLMClientBuilder:
 
     def build(self) -> VLLMClient:
         """Build the VLLM client."""
-        return VLLMClient(vllm_config=self._vllm_config, **self._config)
+        return VLLMClient(
+            base_url=str(self._config.get("base_url", "http://localhost:8000")),
+            api_key=cast("str | None", self._config.get("api_key")),
+            timeout=float(self._config.get("timeout", 60.0)),
+            max_retries=int(self._config.get("max_retries", 3)),
+            retry_delay=float(self._config.get("retry_delay", 1.0)),
+            vllm_config=self._vllm_config,
+        )
 
 
 # ============================================================================

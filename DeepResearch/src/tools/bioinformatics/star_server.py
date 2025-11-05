@@ -8,6 +8,7 @@ testcontainers deployment.
 
 from __future__ import annotations
 
+import asyncio
 import os
 import subprocess
 from typing import TYPE_CHECKING, Any
@@ -161,7 +162,11 @@ class STARServer(MCPServerBase):
                 return self._mock_result(operation, method_params)
 
             # Call the appropriate method
-            return method(**method_params)
+            result = method(**method_params)
+            # Await if it's a coroutine
+            if asyncio.iscoroutine(result):
+                return asyncio.run(result)
+            return result
         except Exception as e:
             return {
                 "success": False,

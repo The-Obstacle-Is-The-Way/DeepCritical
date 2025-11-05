@@ -5,7 +5,8 @@ This agent demonstrates how to use the websearch and analytics tools with Pydant
 for intelligent search and retrieval operations.
 """
 
-from typing import Any
+import json
+from typing import Any, cast
 
 from pydantic_ai import Agent
 
@@ -32,8 +33,9 @@ class SearchAgent:
 
     def __init__(self, config: SearchAgentConfig):
         self.config = config
-        self.agent = Agent(
+        self.agent = Agent[SearchAgentDependencies, str](
             model=config.model,
+            deps_type=SearchAgentDependencies,
             system_prompt=self._get_system_prompt(),
             tools=[
                 web_search_tool,
@@ -72,12 +74,13 @@ class SearchAgent:
 
             # Check if the result contains processing information
             if hasattr(result, "data") and isinstance(result.data, dict):
-                processing_time = result.data.get("processing_time")
-                analytics_recorded = result.data.get("analytics_recorded", False)
+                result_dict = cast("dict[str, Any]", result.data)
+                processing_time = result_dict.get("processing_time")
+                analytics_recorded = result_dict.get("analytics_recorded", False)
 
             return SearchResult(
                 query=query.query,
-                content=result.data if hasattr(result, "data") else str(result),
+                content=str(result.data) if hasattr(result, "data") else str(result),
                 success=True,
                 processing_time=processing_time,
                 analytics_recorded=analytics_recorded,
@@ -91,10 +94,20 @@ class SearchAgent:
     async def get_analytics(self, days: int = 30) -> dict[str, Any]:
         """Get analytics data for the specified number of days."""
         try:
-            deps = {"days": days}
+            # Create proper dependencies - use config values instead of hardcoding
+            deps = SearchAgentDependencies(
+                query="analytics",
+                search_type="analytics",
+                num_results=0,
+                chunk_size=self.config.chunk_size,
+                chunk_overlap=self.config.chunk_overlap,
+            )
             user_message = SearchAgentPrompts.get_analytics_request_prompt(days)
             result = await self.agent.run(user_message, deps=deps)
-            return result.data if hasattr(result, "data") else {}
+            # Agent returns str (JSON string from tool), parse it to dict
+            if hasattr(result, "data") and isinstance(result.data, str):
+                return cast("dict[str, Any]", json.loads(result.data))
+            return {}
         except Exception as e:
             return {"error": str(e)}
 

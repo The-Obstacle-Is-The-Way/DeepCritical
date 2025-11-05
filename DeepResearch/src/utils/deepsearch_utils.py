@@ -458,7 +458,8 @@ class DeepSearchEvaluator:
         self, question: str, answer: str, evaluation_type: EvaluationType
     ) -> dict[str, Any]:
         """Evaluate the quality of an answer."""
-        self.schemas.get_evaluator_schema(evaluation_type)
+        # Note: get_evaluator_schema is not implemented in the current DeepSearchSchemas
+        # This is a mock implementation
 
         # Mock evaluation - in real implementation, this would use AI
         if evaluation_type == EvaluationType.DEFINITIVE:

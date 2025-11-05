@@ -97,7 +97,11 @@ class TrimGaloreServer(MCPServerBase):
                 }
 
             # Call the appropriate method
-            return method(**method_params)
+            result = method(**method_params)
+            # Await if it's a coroutine
+            if asyncio.iscoroutine(result):
+                return asyncio.run(result)
+            return result
         except Exception as e:
             return {
                 "success": False,

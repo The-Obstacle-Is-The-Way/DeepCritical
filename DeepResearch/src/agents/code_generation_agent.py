@@ -7,7 +7,7 @@ using the vendored AG2 code execution framework for execution.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from pydantic_ai import Agent
 
@@ -48,7 +48,7 @@ class CodeGenerationAgent:
         self.python_agent = self._create_python_agent()
         self.universal_agent = self._create_universal_agent()
 
-    def _create_bash_agent(self) -> Agent:
+    def _create_bash_agent(self) -> Agent[None, str]:
         """Create agent specialized for bash command generation."""
         system_prompt = """
         You are an expert bash/shell scripting agent. Your task is to generate safe, efficient bash commands
@@ -72,12 +72,12 @@ class CodeGenerationAgent:
           Response: cp config.json config.json.backup && echo "Backup created: config.json.backup"
         """
 
-        return Agent(
+        return Agent[None, str](
             model=self.model_name,
             system_prompt=system_prompt,
         )
 
-    def _create_python_agent(self) -> Agent:
+    def _create_python_agent(self) -> Agent[None, str]:
         """Create agent specialized for Python code generation."""
         system_prompt = """
         You are an expert Python programmer. Your task is to generate Python code that accomplishes
@@ -138,12 +138,12 @@ class CodeGenerationAgent:
               return averages
         """
 
-        return Agent(
+        return Agent[None, str](
             model=self.model_name,
             system_prompt=system_prompt,
         )
 
-    def _create_universal_agent(self) -> Agent:
+    def _create_universal_agent(self) -> Agent[None, str]:
         """Create universal agent that determines code type and generates appropriately."""
         system_prompt = """
         You are an expert code generation agent. Analyze the user's request and determine whether
@@ -172,7 +172,7 @@ class CodeGenerationAgent:
         CODE: [your generated code here]
         """
 
-        return Agent(
+        return Agent[None, str](
             model=self.model_name,
             system_prompt=system_prompt,
         )
@@ -189,6 +189,8 @@ class CodeGenerationAgent:
         result = await self.bash_agent.run(
             f"Generate a bash command for: {description}"
         )
+        if not hasattr(result, "data"):
+            return ""
         return str(result.data).strip()
 
     async def generate_python_code(self, description: str) -> str:
@@ -201,6 +203,8 @@ class CodeGenerationAgent:
             Generated Python code as string
         """
         result = await self.python_agent.run(f"Generate Python code for: {description}")
+        if not hasattr(result, "data"):
+            return ""
         return str(result.data).strip()
 
     async def generate_code(
@@ -225,6 +229,8 @@ class CodeGenerationAgent:
         result = await self.universal_agent.run(
             f"Analyze and generate code for: {description}"
         )
+        if not hasattr(result, "data"):
+            return "unknown", ""
         response = str(result.data).strip()
 
         # Parse response format: TYPE: [BASH|PYTHON]\nCODE: [code]
@@ -335,7 +341,20 @@ class CodeExecutionAgent:
         if use_jupyter:
             from DeepResearch.src.utils.jupyter.base import JupyterConnectionInfo
 
-            conn_info = JupyterConnectionInfo(**self.jupyter_config)
+            # Validate required fields for Jupyter connection
+            if (
+                "host" not in self.jupyter_config
+                or "use_https" not in self.jupyter_config
+            ):
+                msg = "jupyter_config must contain 'host' and 'use_https' when use_jupyter=True"
+                raise ValueError(msg)
+
+            conn_info = JupyterConnectionInfo(
+                host=str(self.jupyter_config["host"]),
+                use_https=bool(self.jupyter_config["use_https"]),
+                port=self.jupyter_config.get("port"),
+                token=self.jupyter_config.get("token"),
+            )
             self.jupyter_executor = JupyterCodeExecutor(conn_info)
 
         self.python_tool = PythonCodeExecutionTool(
@@ -441,15 +460,61 @@ class CodeExecutionAgentSystem:
             "timeout": 60.0,
         }
 
+        # Extract config values with proper type parsing
+        # Parse common string representations ("false", "0", "5") to avoid silently discarding config
+        def parse_bool(value: Any, default: bool) -> bool:
+            """Parse boolean from various representations."""
+            if isinstance(value, bool):
+                return value
+            if value is None:
+                return default
+            if isinstance(value, str):
+                return value.lower() in ("true", "1", "yes", "on")
+            return bool(value)
+
+        def parse_int(value: Any, default: int) -> int:
+            """Parse integer from various representations."""
+            if isinstance(value, int):
+                return value
+            if value is None:
+                return default
+            try:
+                return int(value)
+            except (ValueError, TypeError):
+                return default
+
+        def parse_float(value: Any, default: float) -> float:
+            """Parse float from various representations."""
+            if isinstance(value, (int, float)):
+                return float(value)
+            if value is None:
+                return default
+            try:
+                return float(value)
+            except (ValueError, TypeError):
+                return default
+
+        use_docker = parse_bool(self.execution_config.get("use_docker", True), True)
+        use_jupyter = parse_bool(self.execution_config.get("use_jupyter", False), False)
+        max_retries = parse_int(self.execution_config.get("max_retries", 3), 3)
+        timeout = parse_float(self.execution_config.get("timeout", 60.0), 60.0)
+
         # Initialize agents
         self.generation_agent = CodeGenerationAgent(
             model_name=generation_model,
-            max_retries=self.execution_config.get("max_retries", 3),
-            timeout=self.execution_config.get("timeout", 60.0),
+            max_retries=max_retries,
+            timeout=timeout,
         )
 
         self.execution_agent = CodeExecutionAgent(
-            model_name=generation_model, **self.execution_config
+            model_name=generation_model,
+            use_docker=use_docker,
+            use_jupyter=use_jupyter,
+            jupyter_config=cast(
+                "dict[str, Any] | None", self.execution_config.get("jupyter_config")
+            ),
+            max_retries=max_retries,
+            timeout=timeout,
         )
 
     async def process_request(

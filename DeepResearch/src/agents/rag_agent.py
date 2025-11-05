@@ -11,6 +11,8 @@ import time
 from dataclasses import dataclass
 from typing import Optional
 
+from omegaconf import DictConfig
+
 from ..datatypes.rag import (
     Document,
     Embeddings,
@@ -31,10 +33,11 @@ class RAGAgent(ResearchAgent):
 
     def __init__(
         self,
+        cfg: DictConfig,
         vector_store_config: VectorStoreConfig | None = None,
         embeddings: Embeddings | None = None,
     ):
-        super().__init__()
+        super().__init__(cfg)
         self.agent_type = "rag"
         self.vector_store: VectorStore | None = None
         self.embeddings: Embeddings | None = embeddings
@@ -50,13 +53,15 @@ class RAGAgent(ResearchAgent):
                 "Vector store config must be provided when embeddings is specified"
             )
 
-    def execute_rag_query(self, query: RAGQuery) -> RAGResponse:
+    async def execute_rag_query(self, query: RAGQuery) -> RAGResponse:
         """Execute a RAG query and return the response."""
         start_time = time.time()
 
         try:
             # Retrieve relevant documents
-            retrieved_documents = self.retrieve_documents(query.text, query.top_k or 5)
+            retrieved_documents = await self.retrieve_documents(
+                query.text, query.top_k or 5
+            )
 
             # Generate answer based on retrieved documents
             context = self._build_context(retrieved_documents)
@@ -89,37 +94,36 @@ class RAGAgent(ResearchAgent):
                 processing_time=processing_time,
             )
 
-    def retrieve_documents(self, query: str, limit: int = 5) -> list[Document]:
+    async def retrieve_documents(
+        self, query: str, limit: int = 5
+    ) -> list[SearchResult]:
         """Retrieve relevant documents for a query."""
         if not self.vector_store:
             return []
 
         try:
             # Perform similarity search
-            search_results = self.vector_store.search(
+            search_results = await self.vector_store.search(
                 query=query,
                 search_type=SearchType.SIMILARITY,
             )
 
-            # Convert SearchResult to Document
-            documents = []
-            for result in search_results[:limit]:
-                documents.append(result.document)
-
-            return documents
+            # Return SearchResult objects (with document, score, rank)
+            return search_results[:limit]
         except Exception as e:
             print(f"Error during document retrieval: {e}")
             return []
 
-    def generate_answer(self, query: str, documents: list[Document]) -> str:
+    def generate_answer(self, query: str, search_results: list[SearchResult]) -> str:
         """Generate an answer based on retrieved documents."""
-        if not documents:
+        if not search_results:
             return "No relevant documents found to answer the query."
 
         # For now, return a simple concatenation
         # In a real implementation, this would use an LLM to generate an answer
         doc_summaries = []
-        for i, doc in enumerate(documents, 1):
+        for i, result in enumerate(search_results, 1):
+            doc = result.document
             content_preview = (
                 doc.content[:200] + "..." if len(doc.content) > 200 else doc.content
             )
@@ -127,18 +131,19 @@ class RAGAgent(ResearchAgent):
 
         return f"""Based on the retrieved documents, here's what I found regarding: "{query}"
 
-Context from {len(documents)} documents:
+Context from {len(search_results)} documents:
 {chr(10).join(doc_summaries)}
 
 Note: This is a basic implementation. A full RAG system would use an LLM to generate a more coherent and contextual answer based on the retrieved documents."""
 
-    def _build_context(self, documents: list[Document]) -> str:
+    def _build_context(self, search_results: list[SearchResult]) -> str:
         """Build context string from retrieved documents."""
-        if not documents:
+        if not search_results:
             return ""
 
         context_parts = []
-        for i, doc in enumerate(documents, 1):
+        for i, result in enumerate(search_results, 1):
+            doc = result.document
             context_parts.append(f"[Document {i}]\n{doc.content}\n")
 
         return "\n".join(context_parts)
@@ -169,7 +174,7 @@ Note: This is a basic implementation. A full RAG system would use an LLM to gene
             print(f"Error adding document chunks: {e}")
             return False
 
-    def search_documents(
+    async def search_documents(
         self,
         query: str,
         search_type: SearchType = SearchType.SIMILARITY,
@@ -180,10 +185,11 @@ Note: This is a basic implementation. A full RAG system would use an LLM to gene
             return []
 
         try:
-            return self.vector_store.search(
+            results = await self.vector_store.search(
                 query=query,
                 search_type=search_type,
-            )[:limit]
+            )
+            return results[:limit]
         except Exception as e:
             print(f"Error searching documents: {e}")
             return []

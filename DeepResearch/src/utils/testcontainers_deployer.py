@@ -18,6 +18,7 @@ from DeepResearch.src.datatypes.mcp import (
     MCPServerConfig,
     MCPServerDeployment,
     MCPServerStatus,
+    MCPServerType,
 )
 from DeepResearch.src.tools.bioinformatics.bowtie2_server import Bowtie2Server
 from DeepResearch.src.tools.bioinformatics.fastqc_server import FastQCServer
@@ -199,7 +200,7 @@ class TestcontainersDeployer:
 
         try:
             # In a real implementation, this would stop the testcontainers container
-            deployment.status = "stopped"
+            deployment.status = MCPServerStatus.STOPPED
             deployment.finished_at = None  # Would be set by testcontainers
 
             # Clean up container reference
@@ -211,7 +212,7 @@ class TestcontainersDeployer:
 
         except Exception as e:
             logger.exception("Failed to stop MCP server '%s'", server_name)
-            deployment.status = "failed"
+            deployment.status = MCPServerStatus.FAILED
             deployment.error_message = str(e)
             return False
 
@@ -232,7 +233,7 @@ class TestcontainersDeployer:
             msg = f"Server '{server_name}' not deployed"
             raise ValueError(msg)
 
-        if deployment.status != "running":
+        if deployment.status != MCPServerStatus.RUNNING:
             msg = f"Server '{server_name}' is not running (status: {deployment.status})"
             raise ValueError(msg)
 
@@ -241,6 +242,11 @@ class TestcontainersDeployer:
         if not server:
             msg = f"Server implementation for '{server_name}' not found"
             raise ValueError(msg)
+
+        # Ensure server is an instance, not a class
+        if isinstance(server, type):
+            server = server()
+            self.server_implementations[server_name] = server
 
         # Check if tool exists
         available_tools = server.list_tools()
@@ -255,11 +261,26 @@ class TestcontainersDeployer:
             msg = f"Tool execution failed: {e}"
             raise ValueError(msg)
 
-    def _get_server_type(self, server_name: str) -> str:
+    def _get_server_implementation(self, server_name: str):
+        """Get or create server implementation instance."""
+        server = self.server_implementations.get(server_name)
+        if server is None:
+            return None
+
+        # If it's a class (type), instantiate it
+        if isinstance(server, type):
+            server = server()
+            self.server_implementations[server_name] = server
+
+        return server
+
+    def _get_server_type(self, server_name: str) -> MCPServerType:
         """Get the server type from the server name."""
-        if server_name in self.server_implementations:
-            return server_name
-        return "custom"
+        # Try to match server_name to MCPServerType enum
+        try:
+            return MCPServerType(server_name.lower())
+        except ValueError:
+            return MCPServerType.CUSTOM
 
     async def create_server_files(self, server_name: str, output_dir: str) -> list[str]:
         """Create necessary files for server deployment."""
@@ -303,7 +324,13 @@ class TestcontainersDeployer:
         if not server:
             return "# Server implementation not found"
 
+        # Type guard: server exists after the check above
+        assert server is not None
+
         # Generate basic server code structure
+        server_name_attr = getattr(server, "name", server_name)
+        server_version = getattr(server, "version", "1.0.0")
+
         return f'''"""
 Auto-generated MCP server for {server_name}.
 """
@@ -314,7 +341,7 @@ from {server.__module__} import {server.__class__.__name__}
 server = {server.__class__.__name__}()
 
 if __name__ == "__main__":
-    print(f"MCP Server '{server.name}' v{server.version} ready")
+    print(f"MCP Server '{server_name_attr}' v{server_version} ready")
     print(f"Available tools: {{', '.join(server.list_tools())}}")
 '''
 
@@ -376,7 +403,7 @@ if __name__ == "__main__":
         if not deployment:
             return False
 
-        if deployment.status != "running":
+        if deployment.status != MCPServerStatus.RUNNING:
             return False
 
         try:
@@ -413,7 +440,7 @@ if __name__ == "__main__":
         if not deployment:
             raise ValueError(f"Server '{server_name}' not deployed")
 
-        if deployment.status != "running":
+        if deployment.status != MCPServerStatus.RUNNING:
             raise ValueError(
                 f"Server '{server_name}' is not running (status: {deployment.status})"
             )
@@ -477,11 +504,12 @@ if __name__ == "__main__":
 
         if server_name not in self.code_executors:
             # Create code executor if it doesn't exist
+            timeout_val = kwargs.get("timeout", 60)
             self.code_executors[server_name] = DockerCommandLineCodeExecutor(
-                image=deployment.configuration.image
-                if hasattr(deployment.configuration, "image")
-                else "python:3.11-slim",
-                timeout=kwargs.get("timeout", 60),
+                image=deployment.configuration.container_image,
+                timeout=int(timeout_val)
+                if not isinstance(timeout_val, int)
+                else timeout_val,
                 work_dir=f"/tmp/{server_name}_code_blocks",
             )
 

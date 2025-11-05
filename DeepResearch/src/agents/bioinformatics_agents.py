@@ -35,9 +35,11 @@ class DataFusionAgent:
     ):
         self.model_name = model_name
         self.config = config or {}
-        self.agent = self._create_agent()
+        self.agent: Agent[BioinformaticsAgentDeps, DataFusionResult] = (
+            self._create_agent()
+        )
 
-    def _create_agent(self) -> Agent:
+    def _create_agent(self) -> Agent[BioinformaticsAgentDeps, DataFusionResult]:
         """Create the data fusion agent."""
         # Get model from config or use default
         bioinformatics_config = self.config.get("bioinformatics", {})
@@ -53,7 +55,7 @@ class DataFusionAgent:
             BioinformaticsAgentPrompts.DATA_FUSION_SYSTEM,
         )
 
-        return Agent(
+        return Agent[BioinformaticsAgentDeps, DataFusionResult](
             model=model,
             deps_type=BioinformaticsAgentDeps,
             output_type=DataFusionResult,
@@ -74,7 +76,7 @@ class DataFusionAgent:
         )
 
         result = await self.agent.run(fusion_prompt, deps=deps)
-        return result.data
+        return result.output
 
 
 class GOAnnotationAgent:
@@ -82,13 +84,15 @@ class GOAnnotationAgent:
 
     def __init__(self, model_name: str = "anthropic:claude-sonnet-4-0"):
         self.model_name = model_name
-        self.agent = self._create_agent()
+        self.agent: Agent[BioinformaticsAgentDeps, list[GOAnnotation]] = (
+            self._create_agent()
+        )
 
-    def _create_agent(self) -> Agent:
+    def _create_agent(self) -> Agent[BioinformaticsAgentDeps, list[GOAnnotation]]:
         """Create the GO annotation agent."""
         model = AnthropicModel(self.model_name)
 
-        return Agent(
+        return Agent[BioinformaticsAgentDeps, list[GOAnnotation]](
             model=model,
             deps_type=BioinformaticsAgentDeps,
             output_type=list[GOAnnotation],
@@ -111,7 +115,7 @@ class GOAnnotationAgent:
         )
 
         result = await self.agent.run(processing_prompt, deps=deps)
-        return result.data
+        return result.output
 
 
 class ReasoningAgent:
@@ -119,13 +123,15 @@ class ReasoningAgent:
 
     def __init__(self, model_name: str = "anthropic:claude-sonnet-4-0"):
         self.model_name = model_name
-        self.agent = self._create_agent()
+        self.agent: Agent[BioinformaticsAgentDeps, ReasoningResult] = (
+            self._create_agent()
+        )
 
-    def _create_agent(self) -> Agent:
+    def _create_agent(self) -> Agent[BioinformaticsAgentDeps, ReasoningResult]:
         """Create the reasoning agent."""
         model = AnthropicModel(self.model_name)
 
-        return Agent(
+        return Agent[BioinformaticsAgentDeps, ReasoningResult](
             model=model,
             deps_type=BioinformaticsAgentDeps,
             output_type=ReasoningResult,
@@ -153,7 +159,7 @@ class ReasoningAgent:
         )
 
         result = await self.agent.run(reasoning_prompt, deps=deps)
-        return result.data
+        return result.output
 
 
 class DataQualityAgent:
@@ -161,13 +167,15 @@ class DataQualityAgent:
 
     def __init__(self, model_name: str = "anthropic:claude-sonnet-4-0"):
         self.model_name = model_name
-        self.agent = self._create_agent()
+        self.agent: Agent[BioinformaticsAgentDeps, dict[str, float]] = (
+            self._create_agent()
+        )
 
-    def _create_agent(self) -> Agent:
+    def _create_agent(self) -> Agent[BioinformaticsAgentDeps, dict[str, float]]:
         """Create the data quality agent."""
         model = AnthropicModel(self.model_name)
 
-        return Agent(
+        return Agent[BioinformaticsAgentDeps, dict[str, float]](
             model=model,
             deps_type=BioinformaticsAgentDeps,
             output_type=dict[str, float],
@@ -193,7 +201,7 @@ class DataQualityAgent:
         )
 
         result = await self.agent.run(quality_prompt, deps=deps)
-        return result.data
+        return result.output
 
 
 class BioinformaticsAgent:
@@ -253,7 +261,10 @@ class AgentOrchestrator:
             raise ValueError(msg)
 
         # Step 2: Construct dataset from fusion result
-        dataset = FusedDataset(**fusion_result.dataset)
+        if fusion_result.fused_dataset is None:
+            msg = "Fused dataset is None"
+            raise ValueError(msg)
+        dataset = fusion_result.fused_dataset
 
         # Step 3: Assess data quality
         quality_metrics = await self.quality_agent.assess_quality(dataset, deps)

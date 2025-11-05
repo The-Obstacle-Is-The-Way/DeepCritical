@@ -6,7 +6,7 @@ using the vendored AG2 framework, supporting bash commands and Python scripts
 with configurable execution environments.
 """
 
-from typing import Any
+from typing import Any, cast
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -22,6 +22,9 @@ except ImportError:
     class Graph:
         def __init__(self, *args, **kwargs):
             pass
+
+        async def run(self, state: Any) -> Any:
+            """Stub method for when pydantic_graph is not available."""
 
     class BaseNode(Generic[T]):
         def __init__(self, *args, **kwargs):
@@ -545,9 +548,9 @@ class CodeExecutionWorkflow:
         )
 
         # Execute workflow
-        final_state = await self.graph.run(initial_state)
+        final_state = await self.graph.run(cast("Any", initial_state))
 
-        return final_state
+        return cast("CodeExecutionWorkflowState", final_state)
 
 
 # Convenience functions for direct usage
