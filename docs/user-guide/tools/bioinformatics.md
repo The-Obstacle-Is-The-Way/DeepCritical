@@ -1,8 +1,8 @@
 # Bioinformatics Tools
 
-DeepCritical provides comprehensive bioinformatics tools for multi-source data fusion, gene ontology analysis, protein structure analysis, and integrative biological reasoning.
+DeepCritical provides bioinformatics tools for integrative biological data analysis, including gene ontology analysis, literature mining, protein structure prediction, and multi-source data fusion.
 
-## Overview
+## High-Level Analysis Tools
 
 The bioinformatics tools integrate multiple biological databases and provide sophisticated analysis capabilities for gene function prediction, protein analysis, and biological data integration.
 
