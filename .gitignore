@@ -51,6 +51,11 @@ coverage.xml
 *.cover
 .hypothesis/
 .pytest_cache/
+tests/fixtures/gatk/cache/
+
+# Genomics demo data (downloaded locally, not committed)
+examples/simple_genomics_discovery/data/
+examples/simple_genomics_discovery/output/
 
 # Environments
 .env
