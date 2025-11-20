@@ -244,52 +244,68 @@ class MemoryProvider(Protocol):
 **Location**: `DeepResearch/src/memory/adapters/mem0_adapter.py`
 
 ```python
-from mem0 import MemoryClient
+from mem0 import Memory, MemoryClient
 from ..core import MemoryProvider, MemoryItem
 
+
+def _normalize_results(resp: dict | list[dict]) -> list[dict]:
+    """Mem0 returns either {'results': [...]} or a raw list. Normalize."""
+    if isinstance(resp, dict) and "results" in resp:
+        return resp["results"]
+    if isinstance(resp, list):
+        return resp
+    return []
+
+
 class Mem0Adapter:
-    """Adapter wrapping Mem0 client to implement MemoryProvider protocol."""
+    """Adapter wrapping Mem0 to implement MemoryProvider protocol."""
 
     def __init__(self, config: dict):
-        """Initialize Mem0 client with Neo4j backend.
-
-        Args:
-            config: {
-                "api_key": "...",  # Optional: use Mem0 Cloud
-                "host": "localhost",  # For self-hosted
-                "config": {
-                    "graph_store": {
-                        "provider": "neo4j",
-                        "config": {
-                            "url": "bolt://localhost:7687",
-                            "username": "neo4j",
-                            "password": "..."
-                        }
-                    },
-                    "vector_store": {
-                        "provider": "neo4j",  # Use Neo4j's vector index
-                        "config": {...}
-                    }
-                }
-            }
         """
-        self.client = MemoryClient(**config)
+        Args:
+            config:
+              mode: "oss" | "cloud"
+              oss:
+                graph_store: {...}  # Neo4j/MemGraph/Neptune/Kuzu (server-side)
+                vector_store: {...} # Optional; defaults in Mem0
+              cloud:
+                api_key: "...", host: "https://api.mem0.ai" (optional)
+        """
+        mode = config.get("mode", "oss")
+        if mode == "cloud":
+            # SaaS: server-side graph/vector config; client only needs API auth
+            self.client = MemoryClient(
+                api_key=config["cloud"]["api_key"],
+                host=config["cloud"].get("host"),
+                org_id=config["cloud"].get("org_id"),
+                project_id=config["cloud"].get("project_id"),
+            )
+            self.oss_mode = False
+        else:
+            # OSS: configure Neo4j graph_store locally
+            self.client = Memory.from_config(config["oss"])
+            self.oss_mode = True
 
     async def add(
         self,
         content: str,
         user_id: str,
         agent_id: str,
-        metadata: dict | None = None
+        metadata: dict | None = None,
     ) -> str:
-        """Add memory via Mem0."""
+        """Add memory via Mem0 (sync APIs wrapped in async)."""
         messages = [{"role": "user", "content": content}]
-        result = self.client.add(
+        resp = self.client.add(
             messages=messages,
-            user_id=f"{user_id}:{agent_id}",  # Composite key for agent-specific memory
-            metadata=metadata or {}
+            user_id=f"{user_id}:{agent_id}",  # Namespace by agent
+            metadata=metadata or {},
         )
-        return result["id"]
+        # v1.1 format: {"id": "...", ...}
+        if isinstance(resp, dict) and "id" in resp:
+            return resp["id"]
+        # Fallback: OSS may return {"results":[{"id": ...}]}
+        results = _normalize_results(resp)
+        return results[0]["id"] if results else ""
 
     async def search(
         self,
@@ -297,22 +313,23 @@ class Mem0Adapter:
         user_id: str,
         agent_id: str,
         filters: dict | None = None,
-        limit: int = 5
+        limit: int = 5,
     ) -> list[MemoryItem]:
         """Search memories via Mem0."""
-        results = self.client.search(
+        resp = self.client.search(
             query=query,
             user_id=f"{user_id}:{agent_id}",
-            limit=limit,
-            filters=filters
+            top_k=limit,
+            filters=filters or {},
         )
+        results = _normalize_results(resp)
         return [
             MemoryItem(
-                content=r["memory"],
-                score=r["score"],
+                content=r.get("memory") or r.get("text") or "",
+                score=r.get("score", 0.0),
                 metadata=r.get("metadata", {}),
-                timestamp=r["created_at"],
-                memory_id=r["id"]
+                timestamp=r.get("created_at"),
+                memory_id=r.get("id", ""),
             )
             for r in results
         ]
@@ -322,32 +339,31 @@ class Mem0Adapter:
         user_id: str,
         agent_id: str,
         filters: dict | None = None,
-        limit: int = 10
+        limit: int = 10,
     ) -> list[MemoryItem]:
-        """Get all memories for user+agent."""
-        results = self.client.get_all(
+        """Get recent memories without semantic search."""
+        resp = self.client.get_all(
             user_id=f"{user_id}:{agent_id}",
-            limit=limit
+            top_k=limit,
+            filters=filters or {},
         )
-        # Filter by metadata if needed
-        if filters:
-            results = [r for r in results if all(r.get("metadata", {}).get(k) == v for k, v in filters.items())]
+        results = _normalize_results(resp)
         return [
             MemoryItem(
-                content=r["memory"],
-                score=1.0,  # No score for get_all
+                content=r.get("memory") or r.get("text") or "",
+                score=1.0,
                 metadata=r.get("metadata", {}),
-                timestamp=r["created_at"],
-                memory_id=r["id"]
+                timestamp=r.get("created_at"),
+                memory_id=r.get("id", ""),
             )
             for r in results[:limit]
         ]
 ```
 
 **Key Design Choices**:
-1. **Composite user_id**: Use `f"{user_id}:{agent_id}"` to namespace memories per agent (agent-specific memory)
-2. **Leverage Mem0's API**: No custom graph writes - Mem0 handles Neo4j operations
-3. **Thin wrapper**: ~50 lines of code - just maps our protocol to Mem0's API
+1. **OSS vs Cloud explicitly handled**: OSS uses `Memory.from_config` with Neo4j graph_store; Cloud uses `MemoryClient` with API key/host.
+2. **Response normalization**: Mem0 returns `{"results": [...]}` (or a raw list); adapter normalizes before mapping to `MemoryItem`.
+3. **Composite user_id**: `user_id:agent_id` maintains per-agent isolation without changing Mem0's schema.
 
 ---
 
@@ -547,24 +563,31 @@ memory:
 
   # Mem0-specific config
   mem0:
-    # Option 1: Self-hosted (recommended)
-    host: "localhost"
-    config:
+    mode: "oss"  # "oss" (self-hosted) | "cloud" (SaaS)
+
+    # Option 1: Self-hosted OSS (recommended)
+    oss:
       graph_store:
         provider: "neo4j"
         config:
           url: "${db.neo4j.uri}"
           username: "${db.neo4j.username}"
           password: "${db.neo4j.password}"
-      vector_store:
-        provider: "neo4j"  # Use Neo4j's vector index
-        config:
-          url: "${db.neo4j.uri}"
-          username: "${db.neo4j.username}"
-          password: "${db.neo4j.password}"
+          database: "${db.neo4j.database}"
+      # vector_store optional; Mem0 defaults are fine. Add if we want custom vector db.
+      # vector_store:
+      #   provider: "neo4j"
+      #   config:
+      #     url: "${db.neo4j.uri}"
+      #     username: "${db.neo4j.username}"
+      #     password: "${db.neo4j.password}"
 
-    # Option 2: Mem0 Cloud (fallback for testing)
-    # api_key: "${oc.env:MEM0_API_KEY}"
+    # Option 2: Mem0 Cloud (fallback / POC)
+    cloud:
+      api_key: "${oc.env:MEM0_API_KEY}"
+      host: "https://api.mem0.ai"
+      org_id: null
+      project_id: null
 
   # Agent-specific settings
   agent_configs:
