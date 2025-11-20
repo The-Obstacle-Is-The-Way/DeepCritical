@@ -1,8 +1,24 @@
 # Phase 3: Memory System Implementation Spec
 
-**Status**: 🚧 Proposed
-**Date**: 2025-11-19
+**Status**: ⚠️ **DRAFT - REQUIRES REVISION** (See `AUDIT_PHASE2_PHASE3.md`)
+**Date**: 2025-11-19 (Initial) | 2025-11-20 (Audit)
 **Goal**: Define the concrete architecture, schema, and implementation plan for integrating long-term memory into DeepCritical.
+
+---
+
+## ⚠️ CRITICAL: READ BEFORE IMPLEMENTING
+
+**This spec has 7 critical issues identified in audit** (`AUDIT_PHASE2_PHASE3.md`):
+1. Architecture decision (hybrid vs. pure Mem0) not justified
+2. API inconsistency with Phase 2 recommendations
+3. "Schema conflict" claim unsubstantiated
+4. ~~Agent Profiles claim oversimplified~~ ✅ Fixed
+5. ExecutionHistory integration path missing
+6. ~~Package name error~~ ✅ Fixed
+7. ~~Neo4j reuse assumption unclear~~ ✅ Fixed
+
+**DO NOT implement Vertical Slices until issues resolved.**
+**See audit for full details and recommendations.**
 
 ---
 
@@ -10,8 +26,8 @@
 
 We will implement a **Hybrid "Ports & Adapters" Memory System** that unifies:
 1.  **Mem0 (OSS)** for handling unstructured user conversations (Dynamic Graph + Vectors).
-2.  **Native Neo4j** for structured system events (Strict Schema: G-Memory Hierarchy).
-3.  **Agent Profiles** for selective retrieval (O-Mem pattern).
+2.  **Native Neo4j** for structured system events (Strict Schema: G-Memory-inspired Hierarchy).
+3.  **Agent-Specific Configuration** for selective retrieval per agent role.
 
 This approach avoids "fighting" Mem0's dynamic schema for chat while ensuring we have a rigorous, queryable structure for agent execution traces (Tools, Plans, Workflows).
 
@@ -148,7 +164,10 @@ class MemoryProvider(Protocol):
 *   **Tasks**:
     1.  Create `DeepResearch/src/memory/` package.
     2.  Define `core.py` (interfaces).
-    3.  Implement `neo4j_adapter.py` (using existing `Neo4jVectorStore` logic + adding direct graph writes).
+    3.  Implement `neo4j_adapter.py`:
+        - Reuse Neo4j connection logic from existing `Neo4jVectorStore`
+        - Add NEW graph write methods: `create_node()`, `create_relationship()`, `cypher_query()`
+        - Note: Vector operations separate from graph operations (different APIs)
     4.  Config: Add `configs/memory/default.yaml`.
 
 ### Slice 2: Integration Hooks (Wiring)
@@ -170,7 +189,7 @@ class MemoryProvider(Protocol):
 ### Slice 4: Mem0 Integration (Unstructured Upgrade)
 *   **Goal**: Add the "Chat" layer.
 *   **Tasks**:
-    1.  Install `mem0ai`.
+    1.  Install `mem0` (verify PyPI package name: `pip install mem0`).
     2.  Update `HybridAdapter` to route string-based `.add()` calls to Mem0.
     3.  Keep `.add_trace()` routing to our custom Neo4j logic.
 
