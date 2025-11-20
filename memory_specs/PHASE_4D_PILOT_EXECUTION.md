@@ -2,34 +2,33 @@
 
 **Status**: 📝 Planned
 **Dependency**: Phase 4C (Agent Wiring)
-**Goal**: Prove the system's value by enabling the **Bioinformatics Agent** to persist its execution history (tool usage, results) into the long-term memory graph.
+**Goal**: Prove the system's value by enabling the **Bioinformatics Agent** to automatically persist its execution history (`ExecutionHistory` Complex Object) into long-term memory.
 
 ---
 
 ## 1. Objectives
-- Bridge the `ExecutionHistory` datatype (from Phase 1) to the `MemoryProvider` (from Phase 4).
-- Implement an "Interceptor" or "Hook" that automatically calls `memory.add()` whenever a tool execution completes.
-- Run a "Live Fire" test: Use `BioinformaticsAgent` to run a real (or simulated) tool flow and verify the trace exists in memory.
-- **G-Memory Pattern**: Structure these memories with metadata `type="trace"` and `workflow_id="..."`.
+- **Target the Right History**: Modify `DeepResearch/src/utils/execution_history.py` (The Complex History), *not* the simple list in `agents.py`.
+- **Interceptor Pattern**: Add a `memory_provider` field to `ExecutionHistory`. If present, `add_item()` triggers a background write to memory.
+- **Live Pilot**: Run `BioinformaticsAgent`. Verify that its tool calls (e.g., `run_blast`, `fetch_sequence`) appear in Neo4j.
+- **G-Memory Structure**: Ensure traces use `type="trace"` metadata.
 
 ---
 
 ## 2. Codebase Modifications
 
-### A. Execution Trace Interceptor
-**File**: `DeepResearch/src/utils/execution_history.py` (or wherever the history recording logic lives)
-**Change**:
-- When `add_execution_log` is called:
-    1. Check if `memory_provider` is available.
-    2. If yes, fire-and-forget (async) a call to `memory.add()`.
-    3. **Format**:
-        - Content: `f"Executed {tool_name}: {status}"`
-        - Metadata: `{ "type": "trace", "tool": tool_name, "result_summary": ..., "timestamp": ... }`
+### A. Execution History Interceptor
+**File**: `DeepResearch/src/utils/execution_history.py`
+**Changes**:
+1.  Update `__init__`: Accept optional `memory_provider`.
+2.  Update `add_item(item: ExecutionItem)`:
+    - If `self.memory_provider` is set:
+        - Serialize `item` to dict.
+        - Call `self.memory_provider.add_trace(...)` (Fire & Forget / Async).
 
-### B. Workflow Integration (Bioinformatics)
-**File**: `DeepResearch/configs/bioinformatics/agents.yaml` (or similar)
-**Change**:
-- Ensure `memory_enabled: true` for this specific agent profile.
+### B. Executor Wiring
+**File**: `DeepResearch/src/agents/prime_executor.py` (or whichever executor uses this history)
+**Changes**:
+- When initializing `ExecutionHistory`, pass the `ctx.memory` from `ExecutionContext` (added in 4C).
 
 ---
 
@@ -38,43 +37,36 @@
 **Test File**: `DeepResearch/tests/memory/test_end_to_end_pilot.py`
 
 1.  **Setup**:
-    - Use `Mem0Adapter` (Mock or Real depending on CI environment).
-    - Initialize `BioinformaticsAgent`.
+    - Instantiate `MockMemoryAdapter` (for unit test speed) OR `Mem0Adapter` (for integration).
+    - Create `ExecutionContext` with this memory.
+    - Initialize `ExecutionHistory` with this memory.
 
-2.  **Execution**:
-    - Prompt: "Analyze the BRCA1 gene using the dummy tool."
-    - Agent runs -> Calls Tool -> Returns Result.
+2.  **Simulate Execution**:
+    - `history.add_item(ExecutionItem(tool="blast", status="success", result={"e_value": 0.0}))`
 
 3.  **Verification**:
-    - Immediate Search: `memory.search("BRCA1 trace")`.
-    - **Expectation**: Find a memory item corresponding to the tool execution.
-    - **Metadata Check**: Verify `type="trace"` is present.
+    - `memories = await memory.search("blast", ...)`
+    - Assert `len(memories) == 1`.
+    - Assert `memories[0].metadata["type"] == "trace"`.
+    - Assert `memories[0].metadata["tool"] == "blast"`.
 
 ---
 
 ## 4. Implementation Steps
 
-1.  **Locate Hook Point**:
-    - Audit `DeepResearch/src/utils/execution_history.py` to find the exact write method.
-
-2.  **Implement Bridge**:
-    - Add the logic to serialize `ExecutionHistory` items into a format suitable for `memory.add()`.
-
-3.  **Run Pilot**:
-    - Create a script `scripts/test_memory_pilot.py` that sets up the environment and runs the agent.
-
-4.  **Analyze Results**:
-    - Inspect the memory store.
-    - Confirm the trace is retrievable.
+1.  **Modify ExecutionHistory**: Add the optional provider and the hook in `add_item`.
+2.  **Modify Executor**: Ensure the provider flows from Context -> History.
+3.  **Write Pilot Test**: `test_end_to_end_pilot.py`.
+4.  **Run Pilot**: Execute the test.
 
 ---
 
 ## 5. Acceptance Criteria
-- [ ] `ExecutionHistory` events are automatically mirrored to the memory system.
-- [ ] Metadata correctly tags these as `type: trace`.
-- [ ] `BioinformaticsAgent` runs successfully with memory enabled.
-- [ ] End-to-end test proves data round-trip (Execution -> Memory -> Retrieval).
-- [ ] **Phase 4 Complete**: The system is now live and capable of self-recording its actions.
+- [ ] `ExecutionHistory` in `src/utils` accepts a memory provider.
+- [ ] Adding an item to history triggers a memory write.
+- [ ] Trace data is searchable.
+- [ ] Original functionality of `ExecutionHistory` (metrics, file save) remains untouched.
+- [ ] **End-to-End**: A simulated tool run results in a verifiable memory entry.
 
 ---
 

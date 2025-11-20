@@ -20,13 +20,21 @@
 **File**: `DeepResearch/src/memory/core.py`
 **Responsibility**: Defines the `Protocol` and Pydantic models.
 **Key Components**:
-- `class MemoryItem(BaseModel)`: Standardized return shape (content, score, metadata, timestamp).
+- `class MemoryItem(BaseModel)`: Standardized return shape.
+    - `id`: str
+    - `content`: str
+    - `score`: Optional[float]
+    - `metadata`: dict[str, Any]
+    - `created_at`: Optional[datetime]
+    - `agent_id`: Optional[str]
+    - `user_id`: Optional[str]
 - `class MemoryProvider(Protocol)`: The interface ensuring strict adherence to the Ports & Adapters pattern.
-    - `async def add(...)`
-    - `async def search(...)`
-    - `async def get_all(...)`
-    - `async def delete(...)`
-    - `async def reset(...)`
+    - `async def add(self, content: str, user_id: str, agent_id: str, metadata: Optional[dict] = None) -> str`: Unstructured add.
+    - `async def add_trace(self, agent_id: str, workflow_id: str, trace_data: dict) -> str`: Structured trace logging.
+    - `async def search(self, query: str, user_id: str, agent_id: str, limit: int = 5, filters: Optional[dict] = None) -> list[MemoryItem]`: Hybrid search.
+    - `async def get_all(self, user_id: str, agent_id: str, limit: int = 10, filters: Optional[dict] = None) -> list[MemoryItem]`: Retrieval.
+    - `async def delete(self, memory_id: str) -> bool`: Cleanup.
+    - `async def reset(self) -> bool`: Full wipe (for testing).
 
 ### B. Mock Implementation
 **File**: `DeepResearch/src/memory/adapters/mock_adapter.py`
@@ -34,7 +42,8 @@
 **Key Features**:
 - Simulates "user_id:agent_id" namespacing.
 - Basic substring matching for `search()` to verify retrieval logic.
-- metadata filtering logic to mirror real database queries.
+- Metadata filtering logic to mirror real database queries (e.g. `type="trace"`).
+- `add_trace` implementation that wraps the `trace_data` into a standardized JSON string content for "searchability" while keeping raw data in metadata.
 
 ### C. Factory/Registry
 **File**: `DeepResearch/src/memory/factory.py`
@@ -42,6 +51,7 @@
 **Logic**:
 - `get_memory_provider(config: DictConfig) -> MemoryProvider`
 - Currently only supports `provider: "mock"`.
+- Raises `NotImplementedError` for "mem0" (until Phase 4B).
 
 ---
 
@@ -62,6 +72,9 @@
 3.  **Filtering & Search**:
     - `test_search_substring()`: Add "Bioinformatics P53", search "P53", expect result.
     - `test_metadata_filtering()`: Add items with `{type: "trace"}` and `{type: "chat"}`. Filter by `type="trace"`.
+    
+4.  **Tracing**:
+    - `test_add_trace()`: Verify `add_trace` correctly formats the memory item and sets `type="trace"` in metadata.
 
 ---
 
@@ -81,7 +94,7 @@
     - Write `DeepResearch/src/memory/adapters/mock_adapter.py` to pass the tests (Green).
 
 5.  **Implement Factory**:
-    - Write `DeepResearch/src/memory/factory.py` to instantiate the mock based on a simple config dict.
+    - Write `DeepResearch/src/memory/factory.py`.
 
 6.  **Verify**:
     - Run `pytest DeepResearch/tests/memory/test_core_interface.py`.

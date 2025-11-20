@@ -2,15 +2,17 @@
 
 **Status**: 📝 Planned
 **Dependency**: Phase 4B (Mem0 Adapter)
-**Goal**: "Surgically" inject the memory system into the DeepResearch agent architecture (`Pydantic AI` + `Pydantic Graph`) without breaking existing flows.
+**Goal**: "Surgically" inject the memory system into the DeepResearch agent architecture (`Pydantic AI` + `Pydantic Graph`) and the Executor context (`WorkflowDAG`).
 
 ---
 
 ## 1. Objectives
-- Modify `AgentDependencies` to carry the `MemoryProvider` instance.
-- Update `ResearchState` to support holding memory context (snapshots).
-- Create `MemoryMiddleware` to automate memory interactions (optional auto-save/retrieval hooks).
-- Ensure backward compatibility: Agents must function even if memory provider is `None` or `Mock`.
+- **Double Wiring**: Inject `MemoryProvider` into:
+    1. `AgentDependencies` (for Pydantic AI Agents).
+    2. `ExecutionContext` (for PRIME/Bioinformatics Workflow Executors).
+- **ResearchState Update**: Add `memory_context` to persist relevant memories across graph nodes.
+- **Memory Tool**: Create a tool that Agents can use to actively recall information.
+- **Backward Compatibility**: Ensure all agents work if `memory=None`.
 
 ---
 
@@ -22,77 +24,80 @@
 ```python
 @dataclass
 class AgentDependencies:
-    # ... existing fields ...
-    memory: Optional[MemoryProvider] = None # New field
+    # ... existing ...
+    memory: Any | None = None # Type is Any to avoid circular imports, strictly MemoryProvider at runtime
 ```
 
-### B. Research State
-**File**: `DeepResearch/app.py` (or wherever `ResearchState` is defined)
+### B. Execution Context (Crucial Fix)
+**File**: `DeepResearch/src/datatypes/execution.py`
+**Change**:
+```python
+@dataclass
+class ExecutionContext:
+    # ... existing ...
+    memory: Any | None = None # Inject memory here for automated tracing
+```
+
+### C. Research State
+**File**: `DeepResearch/DeepResearch/app.py`
 **Change**:
 ```python
 @dataclass
 class ResearchState:
-    # ... existing fields ...
-    memory_context: list[MemoryItem] = field(default_factory=list) # Snapshot of relevant memories
+    # ... existing ...
+    memory_context: list[dict] = field(default_factory=list) # Snapshot of memories
 ```
 
-### C. Agent Factory Update
-**File**: `DeepResearch/src/agents/agent_orchestrator.py` (and others)
-**Change**:
-- Update the logic that instantiates agents to retrieve the `MemoryProvider` from the Factory (created in 4A) and pass it into `AgentDependencies`.
+### D. Agent Orchestrator / Factory
+**File**: `DeepResearch/src/agents/agent_orchestrator.py`
+**Logic**:
+- In `create_agent()`:
+    - Get `MemoryProvider` from global factory (singleton pattern or passed in).
+    - Inject into `AgentDependencies`.
 
-### D. Memory Tool (The "Hook")
-**File**: `DeepResearch/src/tools/memory_tools.py` (New)
-**Responsibility**: Expose memory as a Pydantic AI tool.
-**Functions**:
-- `recall_memory(query: str, filter_type: str = None)`: Wraps `provider.search()`.
-- `save_note(content: str)`: Wraps `provider.add()`.
+### E. Memory Tool
+**File**: `DeepResearch/src/tools/memory_tools.py`
+**Logic**:
+- `recall_memory(query: str)`: Uses `ctx.deps.memory.search()`.
+- `save_note(content: str)`: Uses `ctx.deps.memory.add()`.
 
 ---
 
 ## 3. TDD Strategy
 
-1.  **Dependency Injection Test**:
-    - Create a test agent with `AgentDependencies`.
-    - Inject `MockMemoryAdapter` (from 4A).
-    - Verify the agent can access `ctx.deps.memory`.
+1.  **Wiring Test**:
+    - **File**: `DeepResearch/tests/memory/test_wiring.py`
+    - Instantiate `AgentDependencies` with `MockMemoryAdapter`.
+    - Instantiate `ExecutionContext` with `MockMemoryAdapter`.
+    - Verify fields are accessible.
 
-2.  **Tool Execution Test**:
-    - Attach `recall_memory` tool to a simple `pydantic_ai.Agent`.
-    - Run the agent with a prompt: "Recall what I said about P53."
-    - Verify the tool calls `provider.search()` on the mock adapter.
+2.  **Tool Test**:
+    - Create a dummy `pydantic_ai.Agent` with `memory_tools`.
+    - Run it: "Recall P53 info".
+    - Assert `MockAdapter.search` was called.
 
-3.  **State Persistence Test**:
-    - Initialize `ResearchState`.
-    - Manually populate `memory_context`.
-    - Verify `Pydantic Graph` nodes can access this context.
+3.  **Orchestrator Test**:
+    - Mock the Agent Factory.
+    - Verify that created agents receive the memory provider if config enabled.
 
 ---
 
 ## 4. Implementation Steps
 
-1.  **Update Datatypes**:
-    - Modify `DeepResearch/src/datatypes/agents.py` to add the memory field.
-
-2.  **Create Tools**:
-    - Write `DeepResearch/src/tools/memory_tools.py`.
-
-3.  **Update Agent Initialization**:
-    - Modify the orchestrator/server logic to fetch memory from the factory and inject it.
-    - **Crucial**: Wrap this in a `try/except` or config check to allow disabling memory easily.
-
-4.  **Verify**:
-    - Run existing agent tests to ensure no regressions (pass `memory=None` where needed).
-    - Run new wiring tests.
+1.  **Update Datatypes**: `agents.py` and `execution.py`.
+2.  **Update App State**: `app.py`.
+3.  **Create Tool**: `src/tools/memory_tools.py`.
+4.  **Update Factory**: Modify `src/agents/agent_orchestrator.py` to inject memory.
+5.  **Tests**: Verify wiring.
 
 ---
 
 ## 5. Acceptance Criteria
-- [ ] `AgentDependencies` includes optional `MemoryProvider`.
-- [ ] `ResearchState` includes `memory_context`.
-- [ ] Agents can successfully call `recall_memory` tool when enabled.
-- [ ] Existing tests pass (backward compatibility verified).
-- [ ] No changes to the core logic of existing tools (bioinformatics modules).
+- [ ] `AgentDependencies` has `memory` field.
+- [ ] `ExecutionContext` has `memory` field.
+- [ ] `ResearchState` has `memory_context`.
+- [ ] Agents can successfully call `recall_memory`.
+- [ ] Existing agents run without crashing (optional memory).
 
 ---
 
