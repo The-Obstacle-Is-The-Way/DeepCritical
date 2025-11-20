@@ -685,9 +685,9 @@ performance:
 
 ---
 
-### Memory Integration Point #5: Memory Configuration
+### Memory Integration Point #5: Memory Configuration (proposed)
 
-**Proposed New Directory**: `configs/memory/`
+**Proposed New Directory**: `configs/memory/` (does not exist yet)
 
 ```
 configs/memory/
@@ -996,47 +996,42 @@ class MemoryDocument(Document):
 
 ### ToolRegistry & Execution Pattern
 
-**Location**: `DeepResearch/src/tools/base.py:10-64`
+**Location**: `DeepResearch/src/tools/base.py` (minimal registry/runner)
 
 ```python
 @dataclass
 class ToolSpec:
     name: str
-    description: str
-    inputs: dict[str, str]  # param: type
-    outputs: dict[str, str]  # key: type
+    description: str = ""
+    inputs: dict[str, str] = field(default_factory=dict)
+    outputs: dict[str, str] = field(default_factory=dict)
 
 @dataclass
 class ExecutionResult:
     success: bool
-    data: dict[str, Any]
-    metrics: dict[str, Any]
-    error: str | None
+    data: dict[str, Any] = field(default_factory=dict)
+    metrics: dict[str, Any] = field(default_factory=dict)
+    error: str | None = None
 
 class ToolRunner:
-    spec: ToolSpec
+    def __init__(self, spec: ToolSpec):
+        self.spec = spec
 
     def validate(self, params: dict[str, Any]) -> tuple[bool, str | None]:
-        """Validate input parameters."""
-        pass
+        ...  # basic string/type checks implemented
 
     def run(self, params: dict[str, Any]) -> ExecutionResult:
-        """Execute the tool."""
-        pass
+        raise NotImplementedError
 
 class ToolRegistry:
-    def register(self, name: str, factory: Callable[[], ToolRunner]):
-        """Register a tool factory."""
-        pass
+    def register(self, name: str, factory: Callable[[], ToolRunner]): ...
+    def make(self, name: str) -> ToolRunner: ...
+    def list(self): ...
 
-    def make(self, name: str) -> ToolRunner:
-        """Instantiate a tool."""
-        pass
-
-    def list(self) -> list[str]:
-        """List all registered tools."""
-        pass
+registry = ToolRegistry()
 ```
+
+**Note**: There is also a richer registry in `DeepResearch/src/utils/tool_registry.py` (mock mode, dependency checks, runners). Pick one registry to instrument for memory logging to avoid double-writes.
 
 **Tools in registry (examples, not exhaustive)**:
 - **Web Search**: ChunkedSearchTool, WebSearchTool
