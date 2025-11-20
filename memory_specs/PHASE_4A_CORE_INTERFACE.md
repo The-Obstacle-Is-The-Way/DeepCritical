@@ -19,6 +19,14 @@
 ### A. Core Interfaces
 **File**: `DeepResearch/src/memory/core.py`
 **Responsibility**: Defines the `Protocol` and Pydantic models.
+
+**Required Imports**:
+```python
+from typing import Protocol, Optional, Any
+from datetime import datetime
+from pydantic import BaseModel
+```
+
 **Key Components**:
 - `class MemoryItem(BaseModel)`: Standardized return shape.
     - `id`: str
@@ -62,7 +70,7 @@
 ### Test Cases:
 1.  **Protocol Compliance**:
     - Verify `MockMemoryAdapter` explicitly implements `MemoryProvider`.
-    - Static type check (Mypy) verification.
+    - Static type check (ty) verification.
 
 2.  **CRUD Operations**:
     - `test_add_memory()`: Add an item, verify it exists in the internal list.
@@ -98,7 +106,7 @@
 
 6.  **Verify**:
     - Run `pytest DeepResearch/tests/memory/test_core_interface.py`.
-    - Run `mypy DeepResearch/src/memory`.
+    - Run `uvx ty check DeepResearch/src/memory`.
 
 ---
 

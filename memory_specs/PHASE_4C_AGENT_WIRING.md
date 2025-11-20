@@ -50,10 +50,35 @@ class ResearchState:
 
 ### D. Agent Orchestrator / Factory
 **File**: `DeepResearch/src/agents/agent_orchestrator.py`
+
+**Approach**: Dependency Injection (recommended for testability)
+
 **Logic**:
-- In `create_agent()`:
-    - Get `MemoryProvider` from global factory (singleton pattern or passed in).
-    - Inject into `AgentDependencies`.
+1. Add `memory_provider: MemoryProvider | None = None` field to `AgentOrchestrator` dataclass.
+2. In agent creation methods, inject memory into `AgentDependencies`:
+```python
+deps = AgentDependencies(
+    config=...,
+    memory=self.memory_provider  # Inject here
+)
+```
+3. In app initialization (e.g., `DeepResearch/app.py`):
+```python
+from DeepResearch.src.memory.factory import get_memory_provider
+
+memory_provider = get_memory_provider(cfg.memory) if cfg.memory.enabled else None
+orchestrator = AgentOrchestrator(
+    config=...,
+    memory_provider=memory_provider
+)
+```
+
+**Alternative**: Global singleton (less testable, not recommended for Phase 4):
+```python
+# In each agent creation:
+from DeepResearch.src.memory.factory import get_memory_provider
+deps = AgentDependencies(memory=get_memory_provider(cfg))
+```
 
 ### E. Memory Tool
 **File**: `DeepResearch/src/tools/memory_tools.py`

@@ -52,6 +52,7 @@
 
 ## 3. Configuration Updates (Hydra)
 
+### A. Memory Config File
 **File**: `DeepResearch/configs/memory/default.yaml` (New)
 **Content**:
 ```yaml
@@ -59,7 +60,7 @@ memory:
   enabled: true
   provider: "mem0"
   mode: "oss" # or "cloud"
-  
+
   # OSS Configuration (Maps to existing db.neo4j)
   oss:
     graph_store:
@@ -79,6 +80,28 @@ memory:
   # Cloud Configuration
   cloud:
     api_key: "${oc.env:MEM0_API_KEY}"
+```
+
+### B. Wire into Main Config
+**File**: `DeepResearch/configs/config.yaml`
+**Change**: Add `memory: default` to the `defaults:` list:
+```yaml
+defaults:
+  - challenge: default
+  - workflow_orchestration: default
+  - db: neo4j
+  - memory: default  # ← ADD THIS LINE
+  - statemachines/flows: prime
+  - _self_
+```
+
+This allows memory config to be composed via Hydra and overridden at CLI:
+```bash
+# Enable memory with OSS mode
+uv run deepresearch memory.enabled=true memory.mode=oss
+
+# Override provider
+uv run deepresearch memory.provider=mock
 ```
 
 ---
