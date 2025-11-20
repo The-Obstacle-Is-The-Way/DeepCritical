@@ -322,76 +322,23 @@ BEST architectural fit for multi-agent coordination, but lacks production maturi
 
 ---
 
-## 5. O-Mem: Brain-Inspired Multi-Faceted Memory
+## 5. Pattern Reference: O-Mem (Paper-Only, No Code)
 
-**Source**: arXiv 2511.13593 (Nov 2025), research system (not production SaaS)
-**Code Availability**: ❌ No public repository as of Nov 19, 2025 (not present in `reference_repo/`)
+**Source**: arXiv 2511.13593 (Nov 2025) | **Code**: ❌ No public repository | **arXiv**: https://arxiv.org/abs/2511.13593
 
-**Official GitHub**: ❌ **NO PUBLIC REPOSITORY** (as of Nov 19, 2025)
-**arXiv Paper**: https://arxiv.org/abs/2511.13593
-**Status**: Research paper only (published 2 days ago - Nov 2025)
-**Note**: Code may be released later or available upon author request (Contact: Piaohong Wang et al.)
-
-### Architecture
-
-**Three Core Components** (inspired by human brain memory):
-1. **Persona Memory (Pa, Pf)**: Long-term user attributes + significant events
-   - **Pa**: Persona attributes (extracted LLM-based)
-   - **Pf**: Persona fact events (significant milestones)
-   - Operations: Add/Ignore/Update (LLM-augmented clustering for deduplication)
-2. **Working Memory (Mt)**: Dynamic topic-indexed interactions
+**Valuable Patterns** (for custom implementation):
+1. **Persona Memory**: Agent-specific attribute profiles (maps to Mario's agent profile concept)
+   - Long-term attributes (Pa) + significant events (Pf)
+   - Self-evolving via LLM-augmented clustering (deduplication)
+2. **Working Memory**: Topic-indexed interactions (useful for domain-specific agents like BioinformaticsAgent)
    - Maps conversation subjects → related interactions
-   - Enables "dual-context awareness" for topical continuity
-3. **Episodic Memory (Mw)**: Associative keyword index → original interactions
-   - Distinctiveness filtering: prioritizes rare/salient keywords (1/dfw)
+   - Enables topical continuity across sessions
+3. **Episodic Memory**: Keyword-based retrieval with distinctiveness filtering (1/dfw) → prioritizes rare/salient keywords
+4. **Parallel Retrieval**: Query all 3 components simultaneously, concatenate results
 
-**Parallel Retrieval**:
-- All 3 components query simultaneously for each user interaction
-- Working Memory: topic-related context (semantic similarity)
-- Episodic Memory: rarest keyword → associated interactions
-- Persona Memory: relevant attributes and facts
-- Concatenated retrieval → LLM response generation
+**Key Claim**: 94% token reduction vs. comparable systems (unverified without code)
 
-**Self-Evolving Mechanism**:
-- Iterative user modeling: extracts topics, attributes, events
-- LLM-augmented nearest-neighbor clustering consolidates redundant attributes
-- Maintains "profile coherence" through conflict management
-
-### Performance Benchmarks
-
-**Token Efficiency**:
-- **94% token reduction** vs. comparable systems (no specific benchmarks reported)
-
-**Scalability**:
-- "Improves with interaction scaling" (dynamic user understanding)
-
-### Integration Patterns
-
-**Plug-and-Play**: No parameter fine-tuning required
-**Storage**: Research prototype (implementation details not specified)
-**Deployment**: Not production-ready (academic research system)
-
-### Pros (For Our Codebase)
-
-✅ **Agent profiles**: Persona Memory naturally maps to Mario's agent profile concept
-✅ **Working Memory topicality**: Useful for domain-specific agents (BioinformaticsAgent tracks papers/genes/proteins)
-✅ **Token efficiency**: 94% reduction critical for tool-heavy workflows
-✅ **Parallel retrieval**: Fast multi-component search
-✅ **Self-evolving**: Automatic profile coherence without manual curation
-
-### Cons
-
-❌ **Research system**: Not production-ready (Nov 2025 paper)
-❌ **Single-agent focus**: No multi-agent coordination patterns
-❌ **Unclear benchmarks**: Token efficiency reported, but no accuracy/latency data
-❌ **Implementation gaps**: Storage backend, deployment, API details missing
-❌ **Maintenance risk**: Academic project may not receive long-term support
-
-### Suitability for DeepCritical/DeepResearch
-
-**Score: 6/10**
-
-Interesting persona/working memory patterns for agent profiles, but immature and single-agent focused.
+**Why Pattern-Only**: No implementation available; would require full custom build to test claims.
 
 ---
 
