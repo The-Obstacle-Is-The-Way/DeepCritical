@@ -592,8 +592,8 @@ Low priority unless migrating to LangGraph (not recommended given Pydantic Graph
 | **Letta** | ❌ Single | ✅ Cloud + OSS | - | 74.0% (LoCoMo) | ✅ Agent-native | ⚠️ Custom adapter | ❌ Filesystem |
 | **Zep** | ❌ Single | ✅ Cloud + OSS | <100ms (est) | 94.8% (DMR) | ⚠️ Unclear | ❌ Proprietary | ❌ Graph-only |
 | **G-Memory** | ✅ Native | ❌ Research | - | +20.89% (action) | ⚠️ Custom impl | ⚠️ Unclear | ⚠️ Hierarchical graphs |
-| **O-Mem** | ❌ Single | ❌ Research | - | - (94% token↓) | ⚠️ Custom impl | ⚠️ Unclear | ❌ No graph |
-| **H-MEM** | ❌ Single | ❌ Research | <100ms | +14.98 F1 | ⚠️ Custom impl | ⚠️ Unclear | ❌ Hierarchical only |
+| **O-Mem** | ❌ Single | ❌ Paper-only | - | - (94% token↓, per paper) | ⚠️ Custom impl | ⚠️ Unclear | ❌ No graph |
+| **H-MEM** | ❌ Single | ❌ Paper-only | <100ms (per paper) | +14.98 F1 (per paper) | ⚠️ Custom impl | ⚠️ Unclear | ❌ Hierarchical only |
 | **MemOS** | ⚠️ Multi-role | ❌ Research | - | - | ⚠️ Custom impl | ❌ Custom infra | ⚠️ Task-Concept-Fact |
 | **LangMem** | ❌ Single | ⚠️ Template | - | - | ❌ LangGraph req | ⚠️ Pluggable | ⚠️ User-defined |
 
