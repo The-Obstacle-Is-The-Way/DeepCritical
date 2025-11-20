@@ -918,9 +918,9 @@ class AgentDependencies:
 
 ### Tier 2: Research-Informed (Phase 4 Prototypes)
 
-1. **G-Memory**: Multi-agent patterns (no production impl available)
-2. **H-MEM**: Hierarchical efficiency (no production impl available)
-3. **O-Mem**: Persona memory (no production impl available)
+1. **G-Memory**: Multi-agent patterns (code present; research maturity)
+2. **H-MEM**: Hierarchical efficiency (paper-only; no public code as of Nov 19, 2025)
+3. **O-Mem**: Persona memory (paper-only; no public code as of Nov 19, 2025)
 
 **Recommendation**: **Borrow architectural patterns** (hierarchical graphs, agent profiles, index-based routing) for **custom implementation** in Phase 4.
 
