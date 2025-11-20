@@ -143,4 +143,64 @@ uv run deepresearch memory.provider=mock
 
 ---
 
+## 7. Optional Enhancement: Local Cache with FileLock
+
+**Source**: Existing pattern in `DeepResearch/src/utils/analytics.py:78-97`
+
+If implementing local cache for offline operation or performance, use proven FileLock pattern:
+
+```python
+from filelock import FileLock
+from pathlib import Path
+import json
+
+class Mem0Adapter:
+    def __init__(self, config: dict):
+        self.client = Memory.from_config(config)
+        self.cache_file = Path(config.get("cache_file", ".mem0_cache.json"))
+        self.use_cache = config.get("use_local_cache", False)
+
+    async def search(self, query: str, user_id: str, agent_id: str, ...) -> list[MemoryItem]:
+        """Search with optional local cache."""
+        if self.use_cache:
+            # Try cache first
+            cached = self._load_cache(query)
+            if cached:
+                return cached
+
+        # Mem0 search
+        results = self.client.search(...)
+
+        if self.use_cache:
+            self._save_cache(query, results)
+
+        return results
+
+    def _save_cache(self, query: str, results: list) -> None:
+        """Save cache atomically using FileLock pattern."""
+        lock_file = str(self.cache_file) + ".lock"
+        with FileLock(lock_file):
+            cache_data = self._load_cache_unlocked() or {}
+            cache_data[query] = {
+                "results": [r.model_dump() for r in results],
+                "timestamp": time.time()
+            }
+            with self.cache_file.open('w') as f:
+                json.dump(cache_data, f)
+```
+
+**Configuration**:
+```yaml
+# configs/memory/default.yaml
+memory:
+  oss:
+    use_local_cache: false  # Enable for offline operation
+    cache_file: ".mem0_cache.json"
+    cache_ttl: 300  # 5 minutes
+```
+
+**Priority**: Optional (defer to Phase 5 if not needed for pilot)
+
+---
+
 **Next Phase**: 4C (Agent Wiring & Middleware)

@@ -50,6 +50,51 @@
 
 ---
 
+## Section 0.5: Scope Clarification - What We're Building
+
+**This Memory System Provides**: Long-term, cross-session memory for agents
+
+**What This IS**:
+- ✅ **Persistent memory** across sessions (survives restarts, days/weeks/months)
+- ✅ **Semantic search** over past interactions ("What did I do with P53 last month?")
+- ✅ **Agent-specific namespacing** (BioinformaticsAgent doesn't see PRIMEAgent's memories)
+- ✅ **Execution trace persistence** (tool calls, results, errors, parameters)
+- ✅ **Vendor-agnostic interface** (can swap Mem0 → Letta via config, no code changes)
+
+**What This IS NOT**:
+- ❌ **Session-scoped state** (that's `DeepAgentState` - todos, files, current directory)
+- ❌ **In-memory conversation buffer** (that's middleware summarization)
+- ❌ **RAG workflow nodes** (that's vector store integration, separate feature)
+- ❌ **Vector store implementation** (we USE Mem0/Neo4j, don't reimplement)
+
+**Relationship to Existing Systems**:
+
+| Existing System | Scope | Our Relationship |
+|-----------------|-------|------------------|
+| **DeepAgentState** | Short-term session state (todos, files) | **COEXISTS** - different scopes, no conflict |
+| **ExecutionHistory** | Execution tracking (file-based) | **WE AUGMENT** - add memory persistence hook |
+| **Middleware** | Conversation management (summarization, caching) | **INDEPENDENT** - different layer |
+| **Vector Stores** | Storage backends (FAISS, Neo4j, Chroma) | **WE CONSUME** - via Mem0's abstraction |
+
+**Concrete Example**:
+
+**Session 1 (Monday)**:
+1. User: "Analyze P53 protein structure"
+2. BioinformaticsAgent runs BLAST → finds 127 matches
+3. Result stored in **Memory** (our system): `{"tool": "blast", "query": "P53", "matches": 127, ...}`
+4. Session ends, user closes terminal
+
+**Session 2 (Thursday, different machine)**:
+1. User: "What protein did I analyze earlier this week?"
+2. Agent searches **Memory**: `memory.search("protein analyzed", user_id="user123", agent_id="bioinformatics")`
+3. Memory returns: "You analyzed P53 protein on Monday, BLAST found 127 matches"
+4. User: "Show me the top match"
+5. Agent retrieves trace from **Memory**, continues workflow
+
+**Meanwhile**: Session state (todos, current directory) managed by **DeepAgentState** (ephemeral, not our concern)
+
+---
+
 ## 1. Executive Summary
 
 We will implement a **Ports & Adapters Memory System** powered by **Mem0 OSS**:
