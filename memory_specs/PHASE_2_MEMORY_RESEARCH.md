@@ -342,75 +342,26 @@ BEST architectural fit for multi-agent coordination, but lacks production maturi
 
 ---
 
-## 6. H-MEM: Hierarchical Efficiency at Scale
+## 6. Pattern Reference: H-MEM (Paper-Only, No Code)
 
-**Source**: arXiv 2507.22925 (July 2025), research system (not production SaaS)
+**Source**: arXiv 2507.22925 (July 2025) | **Code**: ❌ No public repository | **arXiv**: https://arxiv.org/abs/2507.22925
 
-**Official GitHub**: ❌ **NO PUBLIC REPOSITORY** (as of Nov 19, 2025)
-**arXiv Paper**: https://arxiv.org/abs/2507.22925
-**Status**: Research paper only (published July 2025)
-**Note**: Code may be released later or available upon author request (Contact: Haoran Sun et al.)
+**Valuable Patterns** (for custom implementation):
+1. **4-Layer Hierarchy**: Domain → Category → Trace → Episode (maps to flow-based routing)
+   - **Domain Layer**: PRIME, Bioinformatics, DeepSearch flows
+   - **Category Layer**: Alignment, Variant Calling, Quantification tool types
+   - **Trace Layer**: Keyword summaries of interactions
+   - **Episode Layer**: Full contextual memory + timestamps
+2. **Index-Based Routing**: Layer-by-layer traversal (not exhaustive search)
+   - Complexity reduction: O(a·10⁶·D) → O((a+k·300)·D)
+3. **User Feedback Regulation**: Approved memories strengthened, refuted memories reduced
 
-### Architecture
+**Key Claims** (unverified without code):
+- **<100ms retrieval latency** (vs. Mem0's 710ms)
+- **+21.25 F1 points** for multi-hop reasoning (LoCoMo dataset)
+- Effective across 1.5B–7B parameter models
 
-**Four-Layer Hierarchical Structure** (analogous to document structure):
-1. **Domain Layer**: Highest-level topic categorization (e.g., "Bioinformatics")
-2. **Category Layer**: Specific subdomains (e.g., "RNA-Seq", "Variant Calling")
-3. **Memory Trace Layer**: Keyword summaries of dialogue content
-4. **Episode Layer**: Complete contextual memory + timestamps + inferred user profiles
-
-**Memory Representation**:
-- Each entry: semantic vector + self-positional index + pointers to subordinate layers
-- **Index-based routing**: Layer-by-layer traversal (not exhaustive similarity search)
-- **Complexity reduction**: O(a·10⁶·D) → O((a+k·300)·D)
-
-**Dynamic Memory Regulation**:
-- Beyond forgetting curves: **user feedback-based weight adjustment**
-  - Approved memories: strengthened
-  - Neutral feedback: natural decay
-  - Refuted information: reduced weight
-
-### Performance Benchmarks
-
-**LoCoMo Dataset** (5 QA types, 7,512 pairs):
-| Metric | Improvement |
-|--------|-------------|
-| F1 Score | +14.98 points |
-| BLEU-1 | +12.77 points |
-| Multi-Hop F1 | +21.25 points |
-
-**Retrieval Latency**:
-- **<100ms** at maximum memory load
-- **Baseline**: >400ms
-
-**Model Scalability**: Effective across 1.5B–7B parameter models
-
-### Integration Patterns
-
-**Storage**: Research prototype (implementation details not specified)
-**Deployment**: Not production-ready (academic research system)
-
-### Pros (For Our Codebase)
-
-✅ **FASTEST retrieval (per paper)**: <100ms latency (vs. Mem0's 710ms, Zep's higher)
-✅ **Scalability**: Complexity reduction critical for large memory volumes (~28 bioinformatics modules × tool histories)
-✅ **Hierarchical structure**: Domain/Category layers map to flow-based routing (PRIME, Bioinformatics, DeepSearch)
-✅ **User feedback integration**: Could adapt to researcher preferences over time
-✅ **Multi-hop strength**: +21.25 F1 points for complex reasoning (tool chains: MCP → Agent → Orchestrator)
-
-### Cons
-
-❌ **Research system**: Not production-ready (July 2025 paper)
-❌ **Single-agent focus**: No multi-agent coordination patterns
-❌ **Implementation gaps**: Storage backend, deployment, API details missing
-❌ **Unclear integration**: No framework compatibility documented (LangChain, Pydantic AI, etc.)
-❌ **Maintenance risk**: Academic project may not receive long-term support
-
-### Suitability for DeepCritical/DeepResearch
-
-**Score: 7/10** (paper-only; pattern reference unless code ships)
-
-BEST performance metrics (latency, multi-hop accuracy), but lacks production maturity. Hierarchical structure fits flow-based routing.
+**Why Pattern-Only**: No implementation available; claims unverifiable; would require full custom build.
 
 ---
 
