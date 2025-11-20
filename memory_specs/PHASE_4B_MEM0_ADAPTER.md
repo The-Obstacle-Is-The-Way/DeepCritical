@@ -188,7 +188,17 @@ class Mem0Adapter(MemoryProvider):
 - **Config Validation**: Raises clear errors for missing credentials
 - **Trace Encoding**: Same format as MockAdapter for consistency
 
-### B. Integration Tests
+### B. Factory Update
+**File**: `DeepResearch/src/memory/factory.py`
+
+```python
+from DeepResearch.src.memory.adapters.mem0_adapter import Mem0Adapter
+
+if provider == "mem0":
+    return Mem0Adapter(cfg)
+```
+
+### C. Integration Tests
 **File**: `DeepResearch/tests/memory/test_mem0_integration.py`
 **Responsibility**: Prove it works with real Neo4j.
 **Tools**: `testcontainers` (specifically `neo4j` container).
@@ -202,43 +212,46 @@ class Mem0Adapter(MemoryProvider):
 
 ### A. Memory Config File
 **File**: `DeepResearch/configs/memory/default.yaml` (New)
-**Content**:
+
+**Content (aligned to existing Hydra structure in `configs/db/neo4j.yaml`: `db.uri/username/password`)**:
 ```yaml
 memory:
   enabled: true
-  provider: "mem0"
-  mode: "oss" # or "cloud"
+  provider: mem0
+  mode: oss  # or cloud
 
-  # OSS Configuration (Maps to existing db.neo4j)
+  # OSS Configuration (Maps to existing db.* keys)
   oss:
     graph_store:
-      provider: "neo4j"
+      provider: neo4j
       config:
-        url: "${db.neo4j.uri}"
-        username: "${db.neo4j.username}"
-        password: "${db.neo4j.password}"
+        url: ${db.uri}
+        username: ${db.username}
+        password: ${db.password}
     vector_store:
-      provider: "neo4j"
+      provider: neo4j
       config:
-        url: "${db.neo4j.uri}"
-        username: "${db.neo4j.username}"
-        password: "${db.neo4j.password}"
-        embedding_model_dims: 1536 # Match existing
-  
+        url: ${db.uri}
+        username: ${db.username}
+        password: ${db.password}
+        embedding_model_dims: 1536  # Match existing
+
   # Cloud Configuration
   cloud:
-    api_key: "${oc.env:MEM0_API_KEY}"
+    api_key: ${oc.env:MEM0_API_KEY,}
+    base_url: ${oc.env:MEM0_BASE_URL,}
 ```
 
 ### B. Wire into Main Config
 **File**: `DeepResearch/configs/config.yaml`
-**Change**: Add `memory: default` to the `defaults:` list:
+**Change**: Add `memory: default` to the `defaults:` list (alongside existing `db: neo4j` and `neo4j: orchestrator` entries):
 ```yaml
 defaults:
   - challenge: default
   - workflow_orchestration: default
   - db: neo4j
-  - memory: default  # ← ADD THIS LINE
+  - neo4j: orchestrator
+  - memory: default  # ← ADD
   - statemachines/flows: prime
   - _self_
 ```
@@ -264,11 +277,59 @@ uv run deepresearch memory.provider=mock
 
 2.  **Live Neo4j (Integration Test)**:
     - **File**: `DeepResearch/tests/memory/test_mem0_integration.py`
-    - Spin up Neo4j container.
-    - Instantiate `Mem0Adapter`.
-    - `await adapter.add("test memory", "u1", "a1")`.
-    - `results = await adapter.search("test", "u1", "a1")`.
-    - Assert `len(results) > 0`.
+    - Concrete example:
+    ```python
+    import pytest
+    from neo4j import GraphDatabase
+    from omegaconf import OmegaConf
+    from testcontainers.neo4j import Neo4jContainer
+
+    from DeepResearch.src.memory.adapters.mem0_adapter import Mem0Adapter
+
+
+    @pytest.mark.asyncio
+    @pytest.mark.containerized
+    async def test_mem0_add_and_search_with_neo4j():
+        with Neo4jContainer("neo4j:5.22") as neo4j:
+            cfg = OmegaConf.create(
+                {
+                    "provider": "mem0",
+                    "mode": "oss",
+                    "oss": {
+                        "graph_store": {
+                            "provider": "neo4j",
+                            "config": {
+                                "url": neo4j.get_connection_url(),
+                                "username": "neo4j",
+                                "password": neo4j.NEO4J_ADMIN_PASSWORD,
+                            },
+                        },
+                        "vector_store": {
+                            "provider": "neo4j",
+                            "config": {
+                                "url": neo4j.get_connection_url(),
+                                "username": "neo4j",
+                                "password": neo4j.NEO4J_ADMIN_PASSWORD,
+                            },
+                        },
+                    },
+                }
+            )
+            adapter = Mem0Adapter(cfg)
+            mem_id = await adapter.add("test memory", user_id="u1", agent_id="a1")
+            results = await adapter.search("test", user_id="u1", agent_id="a1")
+            assert any(r.id == mem_id for r in results)
+
+            driver = GraphDatabase.driver(
+                neo4j.get_connection_url().replace("bolt://", "neo4j://"),
+                auth=("neo4j", neo4j.NEO4J_ADMIN_PASSWORD),
+            )
+            with driver.session(database="neo4j") as session:
+                count = session.run(
+                    "MATCH (m:Memory {id:$id}) RETURN count(m) AS c", {"id": mem_id}
+                ).single()["c"]
+                assert count == 1
+    ```
 
 ---
 
@@ -277,7 +338,7 @@ uv run deepresearch memory.provider=mock
 1.  **Dependencies**: `uv add mem0ai neo4j`.
 2.  **Config**: Create `DeepResearch/configs/memory/default.yaml`.
 3.  **Code**: Implement `DeepResearch/src/memory/adapters/mem0_adapter.py`.
-4.  **Factory**: Update `DeepResearch/src/memory/factory.py` to support `provider="mem0"`.
+4.  **Factory**: Update `DeepResearch/src/memory/factory.py` to support `provider="mem0"` (return `Mem0Adapter(cfg)`).
 5.  **Tests**: Write and run unit & integration tests.
 
 ---

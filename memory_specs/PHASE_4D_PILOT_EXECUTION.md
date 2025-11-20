@@ -180,6 +180,8 @@ import asyncio
 class ExecutionHistory:
     items: list[ExecutionItem] = field(default_factory=list)
     memory_provider: MemoryProvider | None = None
+    workflow_id: str | None = None
+    agent_id: str | None = None
     use_file_lock: bool = False  # Enable for concurrent workflows
     lock_file: Path | None = None
 
@@ -208,14 +210,14 @@ class ExecutionHistory:
         if self.use_file_lock and self.lock_file:
             with FileLock(str(self.lock_file)):
                 await self.memory_provider.add_trace(
-                    agent_id=self._agent_id,
-                    workflow_id=self._workflow_id,
+                    agent_id=self.agent_id or "unknown_agent",
+                    workflow_id=self.workflow_id or "unknown_workflow",
                     trace_data=execution_dict
                 )
         else:
             await self.memory_provider.add_trace(
-                agent_id=self._agent_id,
-                workflow_id=self._workflow_id,
+                agent_id=self.agent_id or "unknown_agent",
+                workflow_id=self.workflow_id or "unknown_workflow",
                 trace_data=execution_dict
             )
 ```

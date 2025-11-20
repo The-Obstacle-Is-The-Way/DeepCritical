@@ -166,6 +166,42 @@ def register_memory_tools(agent: Agent[AgentDependencies, str]) -> None:
 - Proper async signatures
 - Clear docstrings for agent's tool use
 
+### F. Prescriptive Wiring in `DeepResearch/app.py` (Prime flow example)
+
+**File**: `DeepResearch/app.py` (PrimeExecute node construction site)
+
+**Changes (explicit)**:
+```python
+from DeepResearch.src.memory.factory import get_memory_provider
+
+# inside main() before run_graph
+memory_provider = (
+    get_memory_provider(cfg.memory)
+    if getattr(cfg, "memory", None) and getattr(cfg.memory, "enabled", False)
+    else None
+)
+
+# inside PrimeExecute.run (when building history/context)
+history = PrimeExecutionHistory(
+    memory_provider=memory_provider,
+    workflow_id="prime",
+    agent_id="prime_executor",
+)
+context = ExecutionContext(
+    workflow=ctx.state.workflow_dag,
+    history=history,
+    manual_confirmation=getattr(prime_cfg, "manual_confirmation", False),
+    adaptive_replanning=getattr(prime_cfg, "adaptive_replanning", True),
+    memory=memory_provider,
+    workflow_id="prime",
+    agent_id="prime_executor",
+)
+```
+
+**Propagate the same `memory_provider` instance** into:
+- `AgentOrchestrator(memory_provider=memory_provider)` so all agents receive it through `AgentDependencies`.
+- Any additional flows that construct `ExecutionContext` or `ExecutionHistory` (Bioinformatics, DeepSearch) using their own `workflow_id`/`agent_id` values for namespace isolation.
+
 ---
 
 ## 3. TDD Strategy
