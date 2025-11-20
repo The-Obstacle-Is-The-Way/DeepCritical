@@ -441,7 +441,7 @@ def _register_tools(self):
         return result
 ```
 
-### Memory Integration Point #3: Memory as Pydantic AI Tools
+### Memory Integration Point #3: Memory as Pydantic AI Tools (proposed)
 
 **Proposed Memory Tools**:
 ```python
@@ -881,7 +881,7 @@ async def search(
 async def delete_documents(self, document_ids: list[str]) -> bool
 ```
 
-**Memory Usage**:
+**Memory Usage (proposed)**:
 - Store `MemoryDocument` (extends `Document`)
 - Leverage graph relationships for temporal/causal memory
 - Use vector index for semantic retrieval
@@ -980,7 +980,7 @@ class Document(BaseModel):
     quality_score: float | None = None
 ```
 
-**Memory Integration**: Create `MemoryDocument` subclass:
+**Memory Integration**: Create `MemoryDocument` subclass (proposed):
 
 ```python
 class MemoryDocument(Document):
@@ -1051,7 +1051,7 @@ registry = ToolRegistry()
 
 ---
 
-### Memory Integration Point #6: Tool Execution Tracking
+### Memory Integration Point #6: Tool Execution Tracking (proposed)
 
 **Proposed Enhancement to ToolRunner**:
 
@@ -1403,12 +1403,12 @@ async def test_neo4j_backend(neo4j_connection):
 
 ## Memory Integration Points Map
 
-### Comprehensive Integration Architecture
+### Comprehensive Integration Architecture (proposed memory hooks noted)
 
 ```mermaid
 graph TB
     subgraph "1. Configuration Layer"
-        HydraConfig[Hydra Config<br/>configs/memory/]
+        HydraConfig[Hydra Config<br/>configs/memory/ (proposed group)]
         MemoryConfig[MemoryConfig<br/>Backend, TTL, Profiles]
     end
 
