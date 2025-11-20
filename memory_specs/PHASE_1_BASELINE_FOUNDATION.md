@@ -160,8 +160,8 @@ class ResearchState:
 
     # ===== CORE FIELDS =====
     question: str
-    plan: list[str] | None = None
-    full_plan: list[dict[str, Any]] | None = None
+    plan: list[str] | None = field(default_factory=list)
+    full_plan: list[dict[str, Any]] | None = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
     answers: list[str] = field(default_factory=list)
 
@@ -692,7 +692,7 @@ performance:
 
 ### Memory Integration Point #5: Memory Configuration (proposed)
 
-**Proposed New Directory**: `configs/memory/` (does not exist yet)
+**Proposed New Directory**: `configs/memory/` (does not exist yet; examples below are proposed YAML)
 
 ```
 configs/memory/
@@ -703,7 +703,7 @@ configs/memory/
 └── redis.yaml          # Redis caching layer
 ```
 
-**configs/memory/default.yaml**:
+**configs/memory/default.yaml** (proposed example):
 ```yaml
 memory:
   # Core settings
@@ -771,7 +771,7 @@ memory:
       enable_deduplication: true
 ```
 
-**configs/memory/neo4j.yaml**:
+**configs/memory/neo4j.yaml** (proposed example):
 ```yaml
 defaults:
   - default
@@ -930,6 +930,10 @@ class VectorStore(ABC):
     async def add_documents(self, documents: list[Document]) -> list[str]:
         """Add documents to the vector store."""
         pass
+
+    async def add_document_chunks(self, chunks: list[Chunk]) -> list[str]:
+        """Optional: add chunks (implemented by stores)."""
+        raise NotImplementedError
 
     @abstractmethod
     async def search(
@@ -1149,7 +1153,7 @@ def operation(param1: str, param2: int) -> dict[str, Any]:
     return {"result": data}
 ```
 
-**Memory Integration**: MCP servers can record execution via context injection.
+**Memory Integration**: MCP servers are tool adapters; if wrapped with a registry runner that has `memory_client`, their executions can be logged similarly.
 
 ---
 
@@ -1199,7 +1203,7 @@ class ExecutionHistory:
         ...
 ```
 
-**Memory Integration Point #7: ExecutionHistory → Memory Pipeline**
+**Memory Integration Point #7: ExecutionHistory → Memory Pipeline (proposed)**
 
 ```python
 class ExecutionHistoryMemoryBridge:
@@ -1308,7 +1312,7 @@ config.addinivalue_line("markers", "pydantic_ai: Pydantic AI agent tests")
 
 ### Memory Testing Strategy
 
-**Proposed Test Structure**: `tests/test_memory/`
+**Proposed Test Structure**: `tests/test_memory/` (does not exist yet)
 
 ```
 tests/test_memory/
@@ -1321,7 +1325,7 @@ tests/test_memory/
 └── test_memory_performance.py      # Performance benchmarks
 ```
 
-**Example Test**:
+**Example Test (proposed)**:
 ```python
 # tests/test_memory/test_memory_client.py
 import pytest
@@ -1409,8 +1413,8 @@ graph TB
     end
 
     subgraph "2. State Layer"
-        ResearchState[ResearchState<br/>+ execution_context<br/>+ memory_session_id]
-        ExecutionContext[ExecutionContext<br/>memory_client, config]
+        ResearchState[ResearchState<br/>+ memory_client<br/>+ memory_session_id]
+        ExecutionContext[ExecutionContext<br/>history, data_bag (no memory today)]
     end
 
     subgraph "3. Agent Layer"
@@ -1484,212 +1488,44 @@ graph TB
 
 ---
 
-## Recommendations
+## Recommendations (proposed)
 
 ### Phase 1 Findings: Key Insights
 
-1. **Architecture is Memory-Ready**
-   - No major refactoring needed
-   - All hooks already exist at every layer
-   - VectorStore abstraction perfect for memory backends
+1. **Architecture is memory-ready**: Hooks exist at state, agent DI, tool execution history, and vector store layers.
+2. **ExecutionHistory is valuable**: Already tracks executions and is serializable; can feed memory.
+3. **Neo4j + FAISS are available**: Production (neo4j) and local (faiss) vector stores are implemented; others are referenced but not in-tree.
+4. **Agent profiles**: Different agents likely need different filters; needs validation with stakeholders.
+5. **Config wiring is straightforward**: Hydra structure makes it easy to add a `memory` config group (not present yet).
 
-2. **ExecutionHistory is a Goldmine**
-   - Already tracks all tool executions
-   - Serializable to JSON
-   - Perfect for memory ingestion
-   - **Quick win**: Bridge ExecutionHistory → Memory in <100 lines of code
+### (Optional) Implementation sketch for later phases
+- Slice 1: In-memory backend; add memory_client/memory_session_id to ResearchState & AgentDependencies; memory tools on one agent; basic tests.
+- Slice 2: Bridge ExecutionHistory → memory.
+- Slice 3: Neo4j backend adapter using existing vector store code.
+- Slice 4: Agent profiles and filtering via config.
+- Slice 5: Retrieval quality (MMR/rerank/temporal weighting).
 
-3. **Neo4j is the Natural Choice**
-   - Already configured and in use
-   - Supports vectors + graph relationships
-   - Can model temporal/causal memory (FOLLOWS, CAUSED_BY, etc.)
-   - No new dependencies needed
+### Next Questions to Resolve
+- Which tool registry to instrument (base vs utils) to avoid duplicate logging?
+- Workflow scope vs cross-run/global memory? Where to generate/keep session_id?
+- Which backend to prioritize for MVP (in-memory vs FAISS vs Neo4j)?
+- Any agents/workflows that should be excluded from memory?
 
-4. **Agent Profiles Make Sense**
-   - Different agents need different memory priorities
-   - BioinformaticsAgent: papers > genes
-   - PRIMEAgent: tool_history > chat
-   - Configuration-driven (no code changes needed)
+## Appendix: File Inventory (touchpoints)
+- State & workflows: `DeepResearch/app.py`; statemachines under `DeepResearch/src/statemachines/` (prime/bioinformatics/rag/deepsearch/code_execution, etc.).
+- Agents: `DeepResearch/agents.py`; `DeepResearch/src/agents/` (planner, parser, executor, bioinformatics, deepsearch, orchestrators, deep_agent variants).
+- Datatypes: `DeepResearch/src/datatypes/` (agents deps/results/history, execution.py, rag.py Document/VectorStoreType, deep_agent_state.py, workflow_orchestration.py, pydantic_ai_tools.py, neo4j_types.py, etc.).
+- Tools: `DeepResearch/src/tools/base.py`; richer registry `DeepResearch/src/utils/tool_registry.py`; bioinformatics MCP servers `DeepResearch/src/tools/bioinformatics/`; web/deepsearch/integrated search tools.
+- Vector stores: `DeepResearch/src/vector_stores/neo4j_vector_store.py`, `faiss_vector_store.py` (others only referenced).
+- Execution tracking: `DeepResearch/src/utils/execution_history.py`.
+- Pydantic AI utils: `DeepResearch/src/utils/pydantic_ai_utils.py`.
+- Configuration: `configs/config.yaml`; flow configs under `configs/statemachines/flows/`; no `configs/memory/` yet.
 
-5. **Hydra Config Integration is Trivial**
-   - Create `configs/memory/` directory
-   - Add to defaults in `config.yaml`
-   - Support CLI overrides
-   - **Effort**: <1 hour
+## Conclusion (current-state recap)
+- Hooks exist to add memory without major refactors.
+- ResearchState/AgentDependencies can accept memory handles/session IDs.
+- ExecutionHistory already captures rich traces.
+- Vector store abstractions (neo4j, faiss) are implemented.
+- Hydra config can host a new `memory` group when ready.
 
----
-
-### Recommended Implementation Path (Aligns with Meta Plan Phase 4)
-
-#### Vertical Slice 1: Minimal Viable Memory (MVP)
-**Goal**: Prove the integration works end-to-end
-
-**Tasks**:
-1. Create `MemoryConfig` dataclass
-2. Create `ExecutionContext` dataclass
-3. Add fields to `ResearchState` and `AgentDependencies`
-4. Implement in-memory backend (dict-based, no persistence)
-5. Add memory tools to one agent (e.g., PlannerAgent)
-6. Test in simple workflow (Plan → Execute → Synthesize)
-
-**Acceptance Criteria**:
-- Agent can `retrieve_memory()` and `store_memory()`
-- Memories persist across nodes in same workflow run
-- Tests pass
-
-**Effort**: 4-6 hours
-**Risk**: Low
-
----
-
-#### Vertical Slice 2: ExecutionHistory Bridge
-**Goal**: Automatically ingest tool executions into memory
-
-**Tasks**:
-1. Create `ExecutionHistoryMemoryBridge` class
-2. Hook into `ExecutionHistory.add_item()`
-3. Convert `ExecutionItem` → `MemoryDocument`
-4. Test with bioinformatics workflow (lots of tool executions)
-
-**Acceptance Criteria**:
-- All tool executions auto-stored in memory
-- Can retrieve previous tool failures
-- Adaptive replanning can use memory
-
-**Effort**: 3-4 hours
-**Risk**: Low
-
----
-
-#### Vertical Slice 3: Neo4j Backend Integration
-**Goal**: Production-ready storage with graph relationships
-
-**Tasks**:
-1. Create `Neo4jMemoryBackend` adapter
-2. Use existing `Neo4jVectorStore` infrastructure
-3. Add graph relationships (FOLLOWS, CAUSED_BY, etc.)
-4. Migrate in-memory data to Neo4j
-5. Test retrieval with graph queries
-
-**Acceptance Criteria**:
-- Memories stored in Neo4j
-- Can query temporal relationships (what happened before X?)
-- Can query causal relationships (what caused Y?)
-- Vector similarity search works
-
-**Effort**: 6-8 hours
-**Risk**: Medium (Neo4j schema design)
-
----
-
-#### Vertical Slice 4: Agent Profiles & Filtering
-**Goal**: Mario's profile-based selective memory
-
-**Tasks**:
-1. Create `AgentProfile` dataclass
-2. Implement profile-based filtering in retrieval
-3. Create profiles for BioinformaticsAgent, PRIMEAgent, etc.
-4. Add profile configs to `configs/memory/`
-5. Test with multiple agents (verify each gets relevant memories)
-
-**Acceptance Criteria**:
-- BioinformaticsAgent retrieves papers/genes (not tool history)
-- PRIMEAgent retrieves tool history (not papers)
-- Configurable via YAML
-
-**Effort**: 5-6 hours
-**Risk**: Low
-
----
-
-#### Vertical Slice 5: Advanced Retrieval (MMR, Reranking)
-**Goal**: High-quality retrieval with deduplication
-
-**Tasks**:
-1. Implement MMR (Maximal Marginal Relevance)
-2. Add cross-encoder reranking
-3. Temporal weighting (recent memories > old)
-4. Importance weighting (critical decisions > routine)
-5. Benchmark retrieval quality
-
-**Acceptance Criteria**:
-- Retrieval returns diverse results (MMR)
-- Reranking improves relevance
-- Temporal decay works
-- Importance scores affect ranking
-
-**Effort**: 8-10 hours
-**Risk**: Medium (algorithm complexity)
-
----
-
-### Total Estimated Effort: 26-34 hours (~1 week for experienced dev)
-
-**Critical Success Factors**:
-1. **Start with Slice 1** - Prove integration works before adding complexity
-2. **Test each slice** - Don't move to next until current passes all tests
-3. **Use existing abstractions** - Don't reinvent VectorStore, Document, etc.
-4. **Leverage ExecutionHistory** - It's already tracking what we need
-
----
-
-## Next Steps for Mario
-
-### Immediate Actions
-
-1. **Review This Document**
-   - Does the integration map make sense?
-   - Any missing integration points?
-   - Does vertical slice approach feel right?
-
-2. **Validate Assumptions**
-   - Is Neo4j the right backend choice?
-   - Are agent profiles correctly identified?
-   - Is ExecutionHistory bridge approach sound?
-
-3. **Prototype Slice 1**
-   - Implement MVP in a branch
-   - Test with simple workflow
-   - Get feedback from team
-
-4. **Iterate Based on Learnings**
-   - Adjust approach based on prototype
-   - Update vertical slices as needed
-   - Ship incrementally
-
----
-
-## Appendix: File Inventory
-
-### Core architecture touchpoints (not exhaustive)
-- **State & workflows**: `DeepResearch/app.py` (graph, ResearchState, node routing); statemachines under `DeepResearch/src/statemachines/` (prime/bioinformatics/rag/deepsearch/code_execution, etc.).
-- **Agents**: `DeepResearch/agents.py` and `DeepResearch/src/agents/` (planner, parser, executor, bioinformatics, deepsearch, orchestrators, deep_agent variants).
-- **Datatypes**: `DeepResearch/src/datatypes/` (agents.py deps/result/history, execution.py, rag.py Document/VectorStoreType, deep_agent_state.py, workflow_orchestration.py, pydantic_ai_tools.py, neo4j_types.py, etc.).
-- **Tools**: `DeepResearch/src/tools/base.py` plus registries; bioinformatics MCP servers under `DeepResearch/src/tools/bioinformatics/`; web/deepsearch/integrated search tools nearby.
-- **Vector stores**: Implemented in `DeepResearch/src/vector_stores/neo4j_vector_store.py` and `faiss_vector_store.py` (others referenced in docs/configs).
-- **Execution tracking**: `DeepResearch/src/utils/execution_history.py`; tool registry variant at `DeepResearch/src/utils/tool_registry.py`.
-- **Pydantic AI utils**: `DeepResearch/src/utils/pydantic_ai_utils.py` (agent/toolset builders).
-- **Configuration**: `configs/config.yaml` entrypoint; flow configs under `configs/statemachines/flows/`; no `configs/memory/` yet.
-
----
-
-## Conclusion
-
-The DeepCritical/DeepResearch codebase is **exceptionally well-architected** for memory system integration. All necessary hooks exist:
-
-✅ **State Management**: ResearchState flows through all nodes
-✅ **Dependency Injection**: AgentDependencies ready for memory client
-✅ **Tool Tracking**: ExecutionHistory already records everything
-✅ **Storage Abstraction**: VectorStore interface supports any backend
-✅ **Configuration**: Hydra composition makes memory config trivial
-
-**No major refactoring needed** - memory can be integrated incrementally via vertical slices.
-
-**Recommended Path**: Start with MVP (Slice 1), validate approach, then ship remaining slices iteratively.
-
-**Mario's architecture is sound** - this document provides the confidence and roadmap to ship it.
-
----
-
-**Status**: 🟢 Ready for Senior Review
-**Next**: Phase 2 - Research best memory architectures (Nov 2025)
+**Status**: Phase 1 document remains an in-progress map; implementation steps are proposals pending alignment.
