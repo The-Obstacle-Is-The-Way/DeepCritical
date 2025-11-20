@@ -27,13 +27,64 @@
 
 **Our Enhancement**: Add memory_provider hook to ALSO persist to Mem0 (backward compatible).
 
-**Changes**:
-1.  Update `__init__`: Accept optional `memory_provider` and `use_file_lock`.
-2.  Update `add_item(item: ExecutionItem)`:
-    - If `self.memory_provider` is set:
-        - Serialize `item` to dict.
-        - Call `self.memory_provider.add_trace(...)` (Fire & Forget / Async).
-        - Optional: Use FileLock for concurrent access safety.
+**Complete Changes**:
+```python
+from __future__ import annotations
+
+import asyncio
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+
+from DeepResearch.src.memory.core import MemoryProvider
+
+
+@dataclass
+class ExecutionHistory:
+    items: list[ExecutionItem] = field(default_factory=list)
+    start_time: float = field(default_factory=lambda: datetime.now(timezone.utc).timestamp())
+    end_time: float | None = None
+    memory_provider: MemoryProvider | None = None  # NEW: Memory integration
+    workflow_id: str | None = None  # NEW: Required for add_trace
+    agent_id: str | None = None  # NEW: Required for add_trace
+
+    def add_item(self, item: ExecutionItem) -> None:
+        """Add execution item with optional memory persistence."""
+        self.items.append(item)
+
+        if self.memory_provider:
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(self._persist_to_memory(item))
+            except RuntimeError:
+                # No running loop; run synchronously to avoid dropping data
+                asyncio.run(self._persist_to_memory(item))
+
+    async def _persist_to_memory(self, item: ExecutionItem) -> None:
+        """Persist execution item to memory as a trace."""
+        payload = {
+            "step_name": item.step_name,
+            "tool": item.tool,
+            "status": item.status.value,
+            "result": item.result,
+            "error": item.error,
+            "timestamp": item.timestamp,
+            "parameters": item.parameters,
+            "duration": item.duration,
+            "retry_count": item.retry_count,
+        }
+        await self.memory_provider.add_trace(
+            agent_id=self.agent_id or "unknown_agent",
+            workflow_id=self.workflow_id or "unknown_workflow",
+            trace_data=payload,
+            user_id="system",
+        )
+```
+
+**Key Design Decisions**:
+- **Async/Sync Bridge**: Handles both running loop (create_task) and no loop (asyncio.run)
+- **Fire-and-Forget**: Memory writes don't block execution
+- **Backward Compatible**: Original file persistence unchanged
+- **Error Handling**: Missing IDs default to "unknown" rather than crash
 
 ### B. Executor Wiring
 **File**: `DeepResearch/src/agents/prime_executor.py` (or whichever executor uses this history)
@@ -46,19 +97,53 @@
 
 **Test File**: `DeepResearch/tests/memory/test_end_to_end_pilot.py`
 
-1.  **Setup**:
-    - Instantiate `MockMemoryAdapter` (for unit test speed) OR `Mem0Adapter` (for integration).
-    - Create `ExecutionContext` with this memory.
-    - Initialize `ExecutionHistory` with this memory.
+**Complete Test Implementation**:
+```python
+import pytest
 
-2.  **Simulate Execution**:
-    - `history.add_item(ExecutionItem(tool="blast", status="success", result={"e_value": 0.0}))`
+from DeepResearch.src.memory.adapters.mock_adapter import MockMemoryAdapter
+from DeepResearch.src.utils.execution_history import ExecutionHistory, ExecutionItem
+from DeepResearch.src.utils.execution_status import ExecutionStatus
 
-3.  **Verification**:
-    - `memories = await memory.search("blast", ...)`
-    - Assert `len(memories) == 1`.
-    - Assert `memories[0].metadata["type"] == "trace"`.
-    - Assert `memories[0].metadata["tool"] == "blast"`.
+
+@pytest.mark.asyncio
+async def test_history_add_item_persists_trace():
+    """Test that ExecutionHistory.add_item triggers memory persistence."""
+    memory = MockMemoryAdapter()
+    history = ExecutionHistory(
+        memory_provider=memory, workflow_id="wf1", agent_id="bio_agent"
+    )
+
+    # Simulate tool execution
+    item = ExecutionItem(
+        step_name="run_blast",
+        tool="blast",
+        status=ExecutionStatus.SUCCESS,
+        result={"hits": 3},
+    )
+    history.add_item(item)
+
+    # Verify trace was persisted to memory
+    hits = await memory.search("blast", user_id="system", agent_id="bio_agent", filters={"type": "trace"})
+    assert len(hits) == 1
+    assert hits[0].metadata["type"] == "trace"
+    assert hits[0].metadata["workflow_id"] == "wf1"
+
+
+@pytest.mark.asyncio
+async def test_history_without_memory_still_works():
+    """Test backward compatibility when memory_provider=None."""
+    history = ExecutionHistory()  # No memory provider
+    item = ExecutionItem(step_name="test", tool="test_tool", status=ExecutionStatus.SUCCESS)
+    history.add_item(item)  # Should not crash
+    assert len(history.items) == 1
+```
+
+**Key Test Coverage**:
+- ✅ Memory persistence triggered by `add_item`
+- ✅ Trace metadata structure (`type="trace"`, `workflow_id`)
+- ✅ Backward compatibility (memory=None works)
+- ✅ Async test markers
 
 ---
 

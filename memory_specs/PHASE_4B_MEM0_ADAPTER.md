@@ -19,26 +19,174 @@
 
 ### A. Mem0 Adapter
 **File**: `DeepResearch/src/memory/adapters/mem0_adapter.py`
-**Responsibility**: Real implementation of `MemoryProvider`.
-**Key Logic**:
-- **Init**:
-    - Load config.
-    - If `mode == "oss"`:
-        - Construct `mem0_config` dictionary.
-        - Map `graph_store`: `provider: "neo4j"`, config from Hydra `db.neo4j`.
-        - Map `vector_store`: `provider: "neo4j"`, config from Hydra `db.neo4j`.
-        - Instantiate `self.client = Memory.from_config(mem0_config)`.
-    - If `mode == "cloud"`:
-        - Instantiate `self.client = MemoryClient(api_key=..., ...)`
-- **Methods**:
-    - `add()`: Wraps `self.client.add()`.
-    - `add_trace()`: JSON dumps the trace data into `content`, sets `metadata={"type": "trace", ...}`.
-    - `search()`: Wraps `self.client.search()`. Calls `_normalize_response()`.
-    - `get_all()`: Wraps `self.client.get_all()`.
-    - `delete()`: Wraps `self.client.delete()`.
-- **Normalization Helper**:
-    - Handles `{"results": [...]}` vs `[...]`.
-    - Handles missing keys gracefully.
+**Responsibility**: Real implementation of `MemoryProvider` with Mem0 SDK.
+
+**Complete Implementation**:
+```python
+from __future__ import annotations
+
+import asyncio
+import json
+from datetime import datetime
+from typing import Any, Callable, Sequence, TypeVar
+
+from mem0 import Memory
+from mem0.client import MemoryClient
+from omegaconf import DictConfig, OmegaConf
+
+from DeepResearch.src.memory.core import MemoryItem, MemoryProvider
+
+T = TypeVar("T")
+
+
+class Mem0Adapter(MemoryProvider):
+    """Mem0-backed MemoryProvider (OSS Neo4j or Cloud)."""
+
+    def __init__(self, cfg: DictConfig):
+        self.mode = getattr(cfg, "mode", "oss")
+        self._client = self._init_client(cfg)
+
+    def _init_client(self, cfg: DictConfig):
+        """Initialize Mem0 client based on mode (OSS or Cloud)."""
+        if self.mode == "oss":
+            neo_cfg = cfg.get("oss", {})
+            graph_cfg = OmegaConf.to_object(neo_cfg.get("graph_store", {})) or {}
+            vector_cfg = OmegaConf.to_object(neo_cfg.get("vector_store", {})) or {}
+            if not graph_cfg or not vector_cfg:
+                raise ValueError("OSS mode requires graph_store and vector_store configs.")
+            mem0_config = {
+                "graph_store": graph_cfg,
+                "vector_store": vector_cfg,
+                "llm": neo_cfg.get("llm"),
+                "embedding": neo_cfg.get("embedding"),
+            }
+            return Memory.from_config(mem0_config)
+        if self.mode == "cloud":
+            api_key = cfg.get("cloud", {}).get("api_key")
+            base_url = cfg.get("cloud", {}).get("base_url")
+            if not api_key:
+                raise ValueError("Mem0 cloud mode requires cloud.api_key")
+            return MemoryClient(api_key=api_key, base_url=base_url)
+        raise ValueError(f"Unsupported Mem0 mode: {self.mode}")
+
+    async def _run(self, fn: Callable[..., T], *args: Any, **kwargs: Any) -> T:
+        """Run sync Mem0 SDK call in executor to avoid blocking."""
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, lambda: fn(*args, **kwargs))
+
+    async def add(
+        self,
+        content: str,
+        user_id: str,
+        agent_id: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> str:
+        resp = await self._run(
+            self._client.add,
+            content,
+            user_id=user_id,
+            agent_id=agent_id,
+            metadata=metadata or {},
+        )
+        return resp.get("id") or resp.get("memory_id") or str(resp)
+
+    async def add_trace(
+        self,
+        agent_id: str,
+        workflow_id: str,
+        trace_data: dict[str, Any],
+        user_id: str = "system",
+    ) -> str:
+        """Add execution trace with structured metadata."""
+        payload = json.dumps(trace_data, default=str)
+        metadata = {"type": "trace", "workflow_id": workflow_id, **trace_data.get("metadata", {})}
+        return await self.add(
+            content=f"[trace] workflow={workflow_id} agent={agent_id} data={payload}",
+            user_id=user_id,
+            agent_id=agent_id,
+            metadata=metadata,
+        )
+
+    async def search(
+        self,
+        query: str,
+        user_id: str,
+        agent_id: str,
+        limit: int = 5,
+        filters: dict[str, Any] | None = None,
+    ) -> list[MemoryItem]:
+        raw = await self._run(
+            self._client.search,
+            query=query,
+            user_id=user_id,
+            agent_id=agent_id,
+            limit=limit,
+            filters=filters or {},
+        )
+        return self._normalize_response(raw, agent_id=agent_id, user_id=user_id, limit=limit)
+
+    async def get_all(
+        self,
+        user_id: str,
+        agent_id: str,
+        limit: int = 10,
+        filters: dict[str, Any] | None = None,
+    ) -> list[MemoryItem]:
+        raw = await self._run(
+            self._client.get_all,
+            user_id=user_id,
+            agent_id=agent_id,
+            filters=filters or {},
+            limit=limit,
+        )
+        return self._normalize_response(raw, agent_id=agent_id, user_id=user_id, limit=limit)
+
+    async def delete(self, memory_id: str) -> bool:
+        return bool(await self._run(self._client.delete, memory_id))
+
+    async def reset(self) -> bool:
+        if hasattr(self._client, "reset"):
+            await self._run(self._client.reset)
+        return True
+
+    def _normalize_response(
+        self, raw: Any, agent_id: str, user_id: str, limit: int
+    ) -> list[MemoryItem]:
+        """Normalize Mem0's variable response formats into MemoryItem list."""
+        entries: Sequence[Any]
+        if isinstance(raw, dict) and "results" in raw:
+            entries = raw["results"]
+        elif isinstance(raw, Sequence):
+            entries = raw
+        else:
+            return []
+        items: list[MemoryItem] = []
+        for entry in entries[:limit]:
+            payload = entry.get("memory", entry)
+            created = payload.get("created_at")
+            created_dt = (
+                datetime.fromisoformat(created) if isinstance(created, str) else None
+            )
+            items.append(
+                MemoryItem(
+                    id=str(payload.get("id") or payload.get("_id")),
+                    content=payload.get("content", ""),
+                    score=payload.get("score"),
+                    metadata=payload.get("metadata") or {},
+                    created_at=created_dt,
+                    agent_id=payload.get("agent_id", agent_id),
+                    user_id=payload.get("user_id", user_id),
+                )
+            )
+        return items
+```
+
+**Key Features**:
+- **Sync-to-Async Bridge**: `run_in_executor` for non-blocking Mem0 SDK calls
+- **Dual Mode Support**: OSS (Neo4j) and Cloud (Mem0 Platform)
+- **Response Normalization**: Handles `{"results": [...]}` vs `[...]` formats
+- **Config Validation**: Raises clear errors for missing credentials
+- **Trace Encoding**: Same format as MockAdapter for consistency
 
 ### B. Integration Tests
 **File**: `DeepResearch/tests/memory/test_mem0_integration.py`
