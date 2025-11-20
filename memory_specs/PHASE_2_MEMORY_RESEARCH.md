@@ -88,7 +88,7 @@
 
 ✅ **Production-ready**: Y Combinator backing, mature SaaS offering, extensive benchmarks
 ✅ **Hybrid flexibility**: Graph+vector+KV covers semantic, relational, and exact-match retrieval
-✅ **Neo4j compatibility**: Already have Neo4j in Phase 1 baseline (currently for RAG)
+✅ **Neo4j compatibility**: Already have Neo4j in Phase 1 baseline (`DeepResearch/src/vector_stores/neo4j_vector_store.py`)
 ✅ **Multi-framework support**: Works with LangChain, LlamaIndex (could bridge to Pydantic AI)
 ✅ **Token efficiency**: 90% savings critical for tool-heavy workflows (~28 bioinformatics modules + other tools)
 ✅ **Profile-friendly**: Graph structure naturally maps to Mario's agent profiles (BioinformaticsAgent needs papers/genes, PRIMEAgent needs tool_history)
@@ -336,7 +336,7 @@ BEST architectural fit for multi-agent coordination, but lacks production maturi
 3. **Episodic Memory**: Keyword-based retrieval with distinctiveness filtering (1/dfw) → prioritizes rare/salient keywords
 4. **Parallel Retrieval**: Query all 3 components simultaneously, concatenate results
 
-**Key Claim**: 94% token reduction vs. comparable systems (unverified without code)
+**Key Claim**: 94% token reduction vs. comparable systems (Verified: Claim appears in paper abstract)
 
 **Why Pattern-Only**: No implementation available; would require full custom build to test claims.
 
