@@ -948,7 +948,7 @@ class AgentDependencies:
 ### 2. Tool-Heavy Workflows
 
 **Problem**: Benchmarks focus on **conversational QA** (LoCoMo, DMR, LongMemEval), not tool execution.
-**Gap**: No evaluation of memory for workflows with **27 MCP servers + 113 tools**.
+**Gap**: No evaluation of memory for workflows with **~28 bioinformatics modules + broader toolchains**.
 **Solution**: Phase 4 prototyping with real-world PRIME/Bioinformatics flows.
 
 ---
