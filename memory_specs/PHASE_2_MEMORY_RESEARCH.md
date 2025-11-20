@@ -8,10 +8,12 @@
 
 ## Executive Summary
 
-**Top Contenders Evaluated**: 8 memory architectures (6 with public code, 2 paper-only kept as pattern references):
+**Systems Evaluated in Detail**: 6 memory architectures (4 with public code, 2 pattern-only references):
 1. **Production-Ready Platforms**: Mem0, Letta (MemGPT), Zep
-2. **Novel Research Systems (2025)**: G-Memory (code), MemOS (code), O-Mem (paper-only), H-MEM (paper-only)
-3. **Framework-Native Solutions**: LangGraph Memory (LangMem)
+2. **Novel Research Systems**: G-Memory (code available)
+3. **Pattern References**: O-Mem (paper-only), H-MEM (paper-only)
+
+**Systems Excluded**: MemOS (corrupted docs, no benchmarks), LangMem (LangGraph-only, incompatible with Pydantic Graph)
 
 **Key Finding**: No single system wins across all dimensions. The choice depends on:
 - **Multi-agent coordination needs**: G-Memory's hierarchical graphs shine
@@ -26,9 +28,10 @@
 **Local Reference Copies**: All available systems cloned to `/reference_repo/` (`.git` directories removed)
 
 **Code Availability Audit (Nov 19, 2025)**:
-- ✅ Public code present locally: Mem0, Letta, Zep, G-Memory, MemOS variants (MemTensor/BAI-LAB/AGIResearch), LangMem, A-MEM, MemEngine, OpenMemory, Memori (see `reference_repo/`)
-- ❌ No public code found: O-Mem, H-MEM (paper-only; not present in `reference_repo/`)
-- **Decision**: Treat O-Mem and H-MEM as *pattern references only*, not Phase 3 implementation candidates unless code ships.
+- ✅ **Evaluated with code**: Mem0, Letta, Zep, G-Memory (see `reference_repo/`)
+- ❌ **No public code** (pattern references only): O-Mem, H-MEM
+- 🗑️ **Excluded from evaluation**: MemOS (corrupted docs, no benchmarks, 3 confusing variants), LangMem (LangGraph-only, incompatible)
+- 📦 **In reference_repo but not evaluated**: A-MEM, MemEngine, OpenMemory, Memori (may evaluate in Phase 5+ if needed)
 
 ---
 
