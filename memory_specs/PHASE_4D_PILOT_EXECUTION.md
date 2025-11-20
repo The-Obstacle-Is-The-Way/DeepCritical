@@ -7,9 +7,9 @@
 ---
 
 ## 1. Objectives
-- **Target the Right History**: Modify `DeepResearch/src/utils/execution_history.py` (The Complex History), *not* the simple list in `agents.py`.
+- **Target the Right History**: Modify `DeepResearch/src/utils/execution_history.py` (The Complex History) used by Prime/Executor.
 - **Interceptor Pattern**: Add a `memory_provider` field to `ExecutionHistory`. If present, `add_item()` triggers a background write to memory.
-- **Live Pilot**: Run `BioinformaticsAgent`. Verify that its tool calls (e.g., `run_blast`, `fetch_sequence`) appear in Neo4j.
+- **Live Pilot**: Run `test_end_to_end_pilot.py`. Verify that `ExecutionHistory.add_item` triggers persistence to Neo4j/Mock.
 - **G-Memory Structure**: Ensure traces use `type="trace"` metadata.
 
 ---
@@ -99,6 +99,7 @@ class ExecutionHistory:
 
 **Complete Test Implementation**:
 ```python
+import asyncio
 import pytest
 
 from DeepResearch.src.memory.adapters.mock_adapter import MockMemoryAdapter
@@ -122,6 +123,9 @@ async def test_history_add_item_persists_trace():
         result={"hits": 3},
     )
     history.add_item(item)
+
+    # Allow background task to run (fixes race condition)
+    await asyncio.sleep(0.1)
 
     # Verify trace was persisted to memory
     hits = await memory.search("blast", user_id="system", agent_id="bio_agent", filters={"type": "trace"})

@@ -31,6 +31,17 @@ class AgentDependencies:
     memory: Any | None = None  # Type is Any to avoid circular imports, MemoryProvider at runtime
     user_id: str | None = None  # CRITICAL: Required for namespace isolation
     agent_id: str | None = None  # CRITICAL: Required for namespace isolation
+
+### A.2. Orchestrator Dependencies (Additional Fix)
+**File**: `DeepResearch/src/datatypes/workflow_orchestration.py`
+**Change**: Update `OrchestratorDependencies` to support memory injection.
+```python
+class OrchestratorDependencies(BaseModel):
+    # ... existing fields ...
+    memory: Any | None = Field(default=None, description="Memory provider")
+    user_id: str | None = Field(default=None, description="User ID for namespace isolation")
+    agent_id: str | None = Field(default=None, description="Agent ID for namespace isolation")
+```
 ```
 
 **Why This Is Critical**:
@@ -109,12 +120,12 @@ from pydantic_ai import Agent, RunContext
 from DeepResearch.src.datatypes.agents import AgentDependencies
 
 
-def register_memory_tools(agent: Agent[AgentDependencies, str]) -> None:
-    """Register memory tools on a Pydantic AI agent."""
+def register_memory_tools(agent: Agent[Any, str]) -> None:
+    """Register memory tools on a Pydantic AI agent (supports AgentDependencies and OrchestratorDependencies)."""
 
     @agent.tool_plain
     async def recall_memory(
-        ctx: RunContext[AgentDependencies], query: str, limit: int = 5
+        ctx: RunContext[Any], query: str, limit: int = 5
     ) -> dict[str, object]:
         """Search long-term memory for relevant information.
 
@@ -125,17 +136,22 @@ def register_memory_tools(agent: Agent[AgentDependencies, str]) -> None:
         Returns:
             {"results": [...]} or {"results": []} if memory unavailable
         """
-        if ctx.deps.memory is None or ctx.deps.user_id is None or ctx.deps.agent_id is None:
+        # Check for deps.memory (generic access)
+        memory = getattr(ctx.deps, "memory", None)
+        user_id = getattr(ctx.deps, "user_id", None)
+        agent_id = getattr(ctx.deps, "agent_id", None)
+
+        if memory is None or user_id is None or agent_id is None:
             return {"results": []}
 
-        hits = await ctx.deps.memory.search(
-            query, user_id=ctx.deps.user_id, agent_id=ctx.deps.agent_id, limit=limit
+        hits = await memory.search(
+            query, user_id=user_id, agent_id=agent_id, limit=limit
         )
         return {"results": [hit.model_dump() for hit in hits]}
 
     @agent.tool_plain
     async def save_note(
-        ctx: RunContext[AgentDependencies],
+        ctx: RunContext[Any],
         content: str,
         metadata: dict[str, object] | None = None,
     ) -> dict[str, str]:
@@ -148,13 +164,17 @@ def register_memory_tools(agent: Agent[AgentDependencies, str]) -> None:
         Returns:
             {"id": "mem_123"} or {"id": ""} if memory unavailable
         """
-        if ctx.deps.memory is None or ctx.deps.user_id is None or ctx.deps.agent_id is None:
+        memory = getattr(ctx.deps, "memory", None)
+        user_id = getattr(ctx.deps, "user_id", None)
+        agent_id = getattr(ctx.deps, "agent_id", None)
+
+        if memory is None or user_id is None or agent_id is None:
             return {"id": ""}
 
-        memory_id = await ctx.deps.memory.add(
+        memory_id = await memory.add(
             content=content,
-            user_id=ctx.deps.user_id,
-            agent_id=ctx.deps.agent_id,
+            user_id=user_id,
+            agent_id=agent_id,
             metadata=metadata,
         )
         return {"id": memory_id}
