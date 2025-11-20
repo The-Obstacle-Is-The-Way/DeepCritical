@@ -27,8 +27,8 @@
 ## Executive Summary
 
 DeepCritical/DeepResearch is a **Hydra + Pydantic Graph + Pydantic AI multi-agent system** with:
-- **~214 Python files** in DeepResearch/ package (~3,400 including tests)
-- **Dozens of tools**, including **27 MCP bioinformatics servers** (113+ tool operations)
+- **214 Python files** under `DeepResearch/` (~379 `.py` files across the repo including tests)
+- **Dozens of tools**, including **~28 `_server.py` bioinformatics modules** (FastMCP/CLI wrappers; mixed completeness)
 - **Vector stores implemented**: Neo4j and FAISS (other backends are referenced in docs/configs but not implemented here)
 - **Multiple workflows**: default/search, challenge, PRIME, Bioinformatics, RAG, DeepSearch, Enhanced/Primary REACT orchestration, plus workflow-pattern statemachines
 - **Many specialized agents** (e.g., Parser, Planner, Executor, Bioinformatics, DeepSearch, Orchestrator, RAG, DeepAgent variants)
@@ -75,7 +75,7 @@ graph TB
 
     subgraph "Tool Ecosystem"
         ToolRegistry[ToolRegistry<br/>tool registry]
-        MCPServers[MCP Servers<br/>18 bioinformatics tools]
+        MCPServers[MCP Servers<br/>~28 bioinformatics modules]
         ExecHistory[ExecutionHistory<br/>Tracks all executions]
     end
 
@@ -200,7 +200,6 @@ class ResearchState:
 
 **Rationale**:
 - `memory_session_id`: Unique identifier for this workflow run (enables cross-run retrieval)
-- `memory_client`/`memory_config`: Hook for workflow-scoped memory access
 
 ---
 
@@ -364,11 +363,14 @@ class BaseAgent(ABC):
 
 **Current Implementation**:
 ```python
- @DeepResearch/src/datatypes/agents.py
+@dataclass
 class AgentDependencies:
-    """Dependencies injected into Pydantic AI agents."""
+    """Dependencies for agent execution."""
     config: dict[str, Any] = field(default_factory=dict)
-
+    tools: list[str] = field(default_factory=list)
+    other_agents: list[str] = field(default_factory=list)
+    data_sources: list[str] = field(default_factory=list)
+```
 
 **Proposed Enhancement**:
 ```python
@@ -920,26 +922,61 @@ async def search(query: str, search_type: SearchType) -> list[SearchResult]
 
 ```python
 class VectorStore(ABC):
-    @abstractmethod
-    async def add_documents(self, documents: list[Document]) -> list[str]:
-        """Add documents to the vector store."""
-        pass
+    """Abstract base class for vector store implementation."""
 
-    async def add_document_chunks(self, chunks: list[Chunk]) -> list[str]:
-        """Optional: add chunks (implemented by stores)."""
-        raise NotImplementedError
+    def __init__(self, config: VectorStoreConfig, embeddings: Embeddings):
+        self.config = config
+        self.embeddings = embeddings
 
     @abstractmethod
-    async def search(
-        self, query: str, search_type: SearchType
-    ) -> list[SearchResult]:
-        """Search for relevant documents."""
-        pass
+    async def add_documents(
+        self, documents: list[Document], **kwargs: Any
+    ) -> list[str]:
+        """Add a list of documents to the vector store."""
+
+    @abstractmethod
+    async def add_document_chunks(
+        self, chunks: list[Chunk], **kwargs: Any
+    ) -> list[str]:
+        """Add document chunks to the vector store."""
+
+    @abstractmethod
+    async def add_document_text_chunks(
+        self, document_texts: list[str], **kwargs: Any
+    ) -> list[str]:
+        """Add document text chunks (legacy)."""
 
     @abstractmethod
     async def delete_documents(self, document_ids: list[str]) -> bool:
-        """Delete documents by ID."""
-        pass
+        """Delete the specified list of documents."""
+
+    @abstractmethod
+    async def search(
+        self,
+        query: str,
+        search_type: SearchType,
+        retrieval_query: str | None = None,
+        **kwargs: Any,
+    ) -> list[SearchResult]:
+        """Search for documents using text query."""
+
+    @abstractmethod
+    async def search_with_embeddings(
+        self,
+        query_embedding: list[float],
+        search_type: SearchType,
+        retrieval_query: str | None = None,
+        **kwargs: Any,
+    ) -> list[SearchResult]:
+        """Search using embedding vector."""
+
+    @abstractmethod
+    async def get_document(self, document_id: str) -> Document | None:
+        """Retrieve a document by its ID."""
+
+    @abstractmethod
+    async def update_document(self, document: Document) -> bool:
+        """Update an existing document."""
 ```
 
 **Implementations in repo**:
@@ -1036,7 +1073,7 @@ registry = ToolRegistry()
 
 **Tools in registry (examples, not exhaustive)**:
 - **Web Search**: ChunkedSearchTool, WebSearchTool
-- **Bioinformatics**: GOAnnotationTool, PubMedRetrievalTool, 18 MCP servers
+- **Bioinformatics**: GOAnnotationTool, PubMedRetrievalTool, ~28 bioinformatics `_server.py` modules (FastMCP/CLI; mixed completeness)
 - **DeepSearch**: QueryRewriterTool, URLVisitTool, ReflectionTool
 - **RAG**: RAGSearchTool, IntegratedSearchTool
 - **Workflow**: EvaluatorTool, ErrorAnalyzerTool
@@ -1109,72 +1146,25 @@ class ToolRunner:
 
 ---
 
-### MCP Bioinformatics Servers (27 Total)
+### MCP Bioinformatics Servers (~28 `_server.py` modules)
 
 **Location**: `DeepResearch/src/tools/bioinformatics/`
 
-**Implementation Status**: 27 fully implemented servers (26 class-based + 1 FastMCP-based)
+**What exists (found via `find ... *_server.py`, 28 modules):**
+`bcftools_server.py`, `bedtools_server.py`, `bowtie2_server.py`, `busco_server.py`,
+`bwa_server.py`, `cutadapt_server.py`, `deeptools_server.py`, `fastp_server.py`,
+`fastqc_server.py`, `featurecounts_server.py`, `flye_server.py`,
+`freebayes_server.py`, `gunzip_server.py`, `haplotypecaller_server.py`,
+`hisat2_server.py`, `kallisto_server.py`, `macs3_server.py`, `meme_server.py`,
+`minimap2_server.py`, `multiqc_server.py`, `qualimap_server.py`,
+`run_deeptools_server.py`, `salmon_server.py`, `samtools_server.py`,
+`seqtk_server.py`, `star_server.py`, `stringtie_server.py`, `trimgalore_server.py`.
 
-**Servers by Category**:
-
-**Alignment (5 servers, 22 tools)**:
-1. `bwa_server.py` - BWA alignment (6 tools: index, mem, aln, samse, sampe, bwasw)
-2. `bowtie2_server.py` - Bowtie2 alignment (3 tools)
-3. `hisat2_server.py` - HISAT2 RNA-seq alignment (3 tools)
-4. `star_server.py` - STAR ultrafast alignment (6 tools)
-5. `minimap2_server.py` - Minimap2 long-read alignment (4 tools)
-
-**Quantification (4 servers, 18 tools)**:
-6. `salmon_server.py` - Salmon transcript quantification (6 tools)
-7. `kallisto_server.py` - Kallisto quantification (8 tools)
-8. `featurecounts_server.py` - FeatureCounts read counting (1 tool)
-9. `stringtie_server.py` - StringTie transcript assembly (3 tools)
-
-**Variant Calling (4 servers, 25 tools)**:
-10. `bcftools_server.py` - BCFtools VCF processing (12 tools)
-11. `haplotypecaller_server.py` - GATK HaplotypeCaller (1 tool)
-12. `freebayes_server.py` - FreeBayes variant calling (1 tool)
-13. `samtools_server.py` - SAMtools manipulation (11 tools)
-
-**Quality Control (4 servers, 12 tools)**:
-14. `fastp_server.py` - Fastp all-in-one QC (1 tool)
-15. `fastqc_server.py` - FastQC quality reports (3 tools)
-16. `multiqc_server.py` - MultiQC aggregation (2 tools)
-17. `qualimap_server.py` - Qualimap quality assessment (6 tools)
-
-**Read Processing (3 servers, 15 tools)**:
-18. `trimgalore_server.py` - TrimGalore adapter trimming (1 tool)
-19. `cutadapt_server.py` - Cutadapt adapter trimming (1 tool)
-20. `seqtk_server.py` - Seqtk sequence toolkit (13 tools)
-
-**Assembly & Annotation (2 servers, 5 tools)**:
-21. `flye_server.py` - Flye long-read assembly (1 tool)
-22. `busco_server.py` - BUSCO genome completeness (4 tools)
-
-**Epigenomics (3 servers, 17 tools)**:
-23. `macs3_server.py` - MACS3 peak calling (4 tools)
-24. `deeptools_server.py` - DeepTools ChIP/ATAC analysis (6 tools)
-25. `meme_server.py` - MEME motif discovery (7 tools)
-
-**Utilities (2 servers, 7 tools)**:
-26. `bedtools_server.py` - BEDTools genomic ranges (3 tools)
-27. `gunzip_server.py` - Decompression utilities (4 tools)
-
-**Total**: 113+ tool operations across 27 servers
-
-**FastMCP Pattern**:
-```python
-from fastmcp import FastMCP
-
-server = FastMCP("tool_name_server")
-
-@server.tool()
-def operation(param1: str, param2: int) -> dict[str, Any]:
-    """Structured input/output for bioinformatics operations."""
-    return {"result": data}
-```
-
-**Memory Integration**: MCP servers are tool adapters; if wrapped with a registry runner that has `memory_client`, their executions can be logged similarly.
+**Notes/accuracy checks:**
+- Mixed implementations: many try to import `FastMCP` with a fallback (`mcp = None` if unavailable); others wrap CLI directly.
+- No `htseq_server.py`, `picard_server.py`, or `tophat_server.py` modules in the tree (tests may alias FeatureCounts, etc.).
+- Tool/operation counts are not normalized in code; no verified “113+ operations” number in-tree.
+- There is no central registry wiring these servers; logging to memory would need to happen in the runner/registry that invokes them.
 
 ---
 
