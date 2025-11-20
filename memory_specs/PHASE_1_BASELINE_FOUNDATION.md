@@ -191,13 +191,11 @@ class ResearchState:
 
 ```python
 # PROPOSED ADDITIONS (types to be defined)
-@dataclass
+ @DeepResearch/app.py
 class ResearchState:
     # ... existing fields ...
 
     memory_session_id: str | None = None
-    memory_client: MemorySystemClient | None = None  # proposed injectable handle
-    memory_config: MemoryConfig | None = None        # proposed per-run settings
 ```
 
 **Rationale**:
@@ -232,7 +230,7 @@ class DeepAgentState(BaseModel):
 **Location**: `DeepResearch/src/statemachines/rag_workflow.py`
 
 ```python
-@dataclass
+ @DeepResearch/src/statemachines/rag_workflow.py
 class RAGState:
     question: str
     rag_config: RAGConfig | None = None
@@ -276,12 +274,11 @@ graph LR
 
 **Example Node Pattern (with proposed memory hooks)**:
 ```python
-@dataclass
-class PlanNode(BaseNode[ResearchState]):
+ @DeepResearch/app.py
+class Plan(BaseNode[ResearchState]):
     async def run(self, ctx: GraphRunContext[ResearchState]) -> NextNode:
         # 1. Read state
         question = ctx.state.question
-        config = ctx.state.config
 
         # 2. MEMORY INTEGRATION (proposed): Retrieve relevant context
         if ctx.state.memory_client:
@@ -308,7 +305,7 @@ class PlanNode(BaseNode[ResearchState]):
             await ctx.state.memory_client.store(
                 content=f"Plan: {plan}",
                 metadata={
-                    "node": "PlanNode",
+                    "node": "Plan",
                     "question": question,
                     "timestamp": datetime.now().isoformat(),
                     "session_id": ctx.state.memory_session_id,
@@ -367,14 +364,11 @@ class BaseAgent(ABC):
 
 **Current Implementation**:
 ```python
-@dataclass
+ @DeepResearch/src/datatypes/agents.py
 class AgentDependencies:
     """Dependencies injected into Pydantic AI agents."""
     config: dict[str, Any] = field(default_factory=dict)
-    tools: list[str] = field(default_factory=list)
-    other_agents: list[str] = field(default_factory=list)
-    data_sources: list[str] = field(default_factory=list)
-```
+
 
 **Proposed Enhancement**:
 ```python
@@ -579,7 +573,7 @@ stateDiagram-v2
 **Location**: `DeepResearch/src/agents/agent_orchestrator.py`
 
 ```python
-@dataclass
+ @DeepResearch/src/agents/agent_orchestrator.py
 class AgentOrchestrator:
     config: AgentOrchestratorConfig
     nested_loops: dict[str, NestedReactConfig] = field(default_factory=dict)
@@ -1008,19 +1002,17 @@ class MemoryDocument(Document):
 **Location**: `DeepResearch/src/tools/base.py` (minimal registry/runner)
 
 ```python
-@dataclass
+ @DeepResearch/src/tools/base.py
 class ToolSpec:
     name: str
     description: str = ""
     inputs: dict[str, str] = field(default_factory=dict)
     outputs: dict[str, str] = field(default_factory=dict)
 
-@dataclass
+ @DeepResearch/src/tools/base.py
 class ExecutionResult:
     success: bool
     data: dict[str, Any] = field(default_factory=dict)
-    metrics: dict[str, Any] = field(default_factory=dict)
-    error: str | None = None
 
 class ToolRunner:
     def __init__(self, spec: ToolSpec):
@@ -1191,7 +1183,7 @@ def operation(param1: str, param2: int) -> dict[str, Any]:
 **Location**: `DeepResearch/src/utils/execution_history.py`
 
 ```python
-@dataclass
+ @DeepResearch/src/utils/execution_history.py
 class ExecutionItem:
     step_name: str
     tool: str
@@ -1203,7 +1195,7 @@ class ExecutionItem:
     duration: float | None = None
     retry_count: int = 0
 
-@dataclass
+ @DeepResearch/src/utils/execution_history.py
 class ExecutionHistory:
     items: list[ExecutionItem] = field(default_factory=list)
     start_time: float = field(default_factory=lambda: datetime.now(timezone.utc).timestamp())
