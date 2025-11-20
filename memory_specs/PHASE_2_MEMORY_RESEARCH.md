@@ -1029,7 +1029,7 @@ class AgentDependencies:
 ### Option D: Research-Driven Custom (H-MEM + Zep Patterns)
 
 **Choose Custom if**:
-- Need **best performance** (H-MEM's <100ms latency)
+- Need **best performance** (H-MEM's <100ms latency per paper; no public code)
 - Require **temporal reasoning** (Zep's bi-temporal model)
 - Have engineering bandwidth for **full custom implementation**
 
@@ -1048,12 +1048,12 @@ class AgentDependencies:
 - ✅ Production-ready (can deploy to users in Phase 4)
 - ✅ Existing OSS implementations (no R&D risk)
 - ✅ Neo4j compatible (Mem0) or extensible (Letta custom backend)
-- ✅ Token efficiency (critical for 27 MCP servers)
+- ✅ Token efficiency (critical for the tool-heavy stack)
 
 **INCORPORATE PATTERNS FROM**:
 - **G-Memory**: Multi-agent hierarchical memory (Insight/Query/Interaction graphs)
-- **H-MEM**: Index-based routing for scalability
-- **O-Mem**: Agent profile-based filtering (Persona Memory)
+- **H-MEM**: Index-based routing for scalability (pattern reference; no code)
+- **O-Mem**: Agent profile-based filtering (Persona Memory; pattern reference)
 - **Zep**: Temporal reasoning (if needed for research domain)
 
 **Phase 3 Decision Tree**:
