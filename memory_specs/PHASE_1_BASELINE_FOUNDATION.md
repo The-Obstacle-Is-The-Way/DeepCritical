@@ -190,23 +190,19 @@ class ResearchState:
 ### Memory Integration Point #1: Add Memory Fields to ResearchState
 
 ```python
-# PROPOSED ADDITIONS
+# PROPOSED ADDITIONS (types to be defined)
 @dataclass
 class ResearchState:
     # ... existing fields ...
 
-    # ===== MEMORY SYSTEM FIELDS (NEW) =====
-    execution_context: ExecutionContext | None = None
     memory_session_id: str | None = None
-    decision_log: list[DecisionRecord] = field(default_factory=list)
-    memory_stats: MemoryStats | None = None
+    memory_client: MemorySystemClient | None = None  # proposed injectable handle
+    memory_config: MemoryConfig | None = None        # proposed per-run settings
 ```
 
 **Rationale**:
-- `execution_context`: Holds memory client and configuration
 - `memory_session_id`: Unique identifier for this workflow run (enables cross-run retrieval)
-- `decision_log`: Tracks decision points for later analysis
-- `memory_stats`: Runtime metrics (cache hits, retrieval times, etc.)
+- `memory_client`/`memory_config`: Hook for workflow-scoped memory access
 
 ---
 
@@ -353,16 +349,17 @@ class BaseAgent(ABC):
 
 ### Memory Integration Point #2: AgentDependencies
 
-**Location**: `DeepResearch/src/datatypes/agents.py:28-34`
+**Location**: `DeepResearch/src/datatypes/agents.py` (dataclass near top)
 
 **Current Implementation**:
 ```python
 @dataclass
 class AgentDependencies:
     """Dependencies injected into Pydantic AI agents."""
-    model_name: str
-    api_keys: dict[str, str]
-    config: dict[str, Any]
+    config: dict[str, Any] = field(default_factory=dict)
+    tools: list[str] = field(default_factory=list)
+    other_agents: list[str] = field(default_factory=list)
+    data_sources: list[str] = field(default_factory=list)
 ```
 
 **Proposed Enhancement**:
@@ -370,11 +367,13 @@ class AgentDependencies:
 @dataclass
 class AgentDependencies:
     """Dependencies injected into Pydantic AI agents."""
-    model_name: str
-    api_keys: dict[str, str]
-    config: dict[str, Any]
+    # keep existing fields
+    config: dict[str, Any] = field(default_factory=dict)
+    tools: list[str] = field(default_factory=list)
+    other_agents: list[str] = field(default_factory=list)
+    data_sources: list[str] = field(default_factory=list)
 
-    # ===== MEMORY SYSTEM FIELDS (NEW) =====
+    # ===== MEMORY SYSTEM FIELDS (NEW - PROPOSED) =====
     memory_client: MemorySystemClient | None = None
     memory_config: MemoryConfig | None = None
     session_id: str | None = None
