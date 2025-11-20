@@ -27,8 +27,8 @@
 ## Executive Summary
 
 DeepCritical/DeepResearch is a **Hydra + Pydantic Graph + Pydantic AI multi-agent system** with:
-- **~379 Python files** across the repo (including tests)
-- **Dozens of tools**, including **18 MCP bioinformatics servers**
+- **~214 Python files** in DeepResearch/ package (~3,400 including tests)
+- **Dozens of tools**, including **27 MCP bioinformatics servers** (113+ tool operations)
 - **Vector stores implemented**: Neo4j and FAISS (other backends are referenced in docs/configs but not implemented here)
 - **Multiple workflows**: default/search, challenge, PRIME, Bioinformatics, RAG, DeepSearch, Enhanced/Primary REACT orchestration, plus workflow-pattern statemachines
 - **Many specialized agents** (e.g., Parser, Planner, Executor, Bioinformatics, DeepSearch, Orchestrator, RAG, DeepAgent variants)
@@ -1117,29 +1117,58 @@ class ToolRunner:
 
 ---
 
-### MCP Bioinformatics Servers (18 Total)
+### MCP Bioinformatics Servers (27 Total)
 
 **Location**: `DeepResearch/src/tools/bioinformatics/`
 
-**Servers Available**:
-1. `bwa_server.py` - BWA alignment
-2. `bowtie2_server.py` - Bowtie2 alignment
-3. `hisat2_server.py` - HISAT2 RNA-seq alignment
-4. `star_server.py` - STAR fast alignment
-5. `salmon_server.py` - Salmon transcript quantification
-6. `kallisto_server.py` - Kallisto quantification
-7. `bcftools_server.py` - VCF processing
-8. `haplotypecaller_server.py` - GATK variant calling
-9. `freebayes_server.py` - FreeBayes variant calling
-10. `fastp_server.py` - Quality control
-11. `fastqc_server.py` - FastQC quality reports
-12. `multiqc_server.py` - MultiQC aggregation
-13. `qualimap_server.py` - Qualimap quality assessment
-14. `trimgalore_server.py` - Adapter trimming
-15. `stringtie_server.py` - Transcript assembly
-16. `featurecounts_server.py` - Read counting
-17. `gunzip_server.py` - Decompression
-18. Plus more...
+**Implementation Status**: 27 fully implemented servers (26 class-based + 1 FastMCP-based)
+
+**Servers by Category**:
+
+**Alignment (5 servers, 22 tools)**:
+1. `bwa_server.py` - BWA alignment (6 tools: index, mem, aln, samse, sampe, bwasw)
+2. `bowtie2_server.py` - Bowtie2 alignment (3 tools)
+3. `hisat2_server.py` - HISAT2 RNA-seq alignment (3 tools)
+4. `star_server.py` - STAR ultrafast alignment (6 tools)
+5. `minimap2_server.py` - Minimap2 long-read alignment (4 tools)
+
+**Quantification (4 servers, 18 tools)**:
+6. `salmon_server.py` - Salmon transcript quantification (6 tools)
+7. `kallisto_server.py` - Kallisto quantification (8 tools)
+8. `featurecounts_server.py` - FeatureCounts read counting (1 tool)
+9. `stringtie_server.py` - StringTie transcript assembly (3 tools)
+
+**Variant Calling (4 servers, 25 tools)**:
+10. `bcftools_server.py` - BCFtools VCF processing (12 tools)
+11. `haplotypecaller_server.py` - GATK HaplotypeCaller (1 tool)
+12. `freebayes_server.py` - FreeBayes variant calling (1 tool)
+13. `samtools_server.py` - SAMtools manipulation (11 tools)
+
+**Quality Control (4 servers, 12 tools)**:
+14. `fastp_server.py` - Fastp all-in-one QC (1 tool)
+15. `fastqc_server.py` - FastQC quality reports (3 tools)
+16. `multiqc_server.py` - MultiQC aggregation (2 tools)
+17. `qualimap_server.py` - Qualimap quality assessment (6 tools)
+
+**Read Processing (3 servers, 15 tools)**:
+18. `trimgalore_server.py` - TrimGalore adapter trimming (1 tool)
+19. `cutadapt_server.py` - Cutadapt adapter trimming (1 tool)
+20. `seqtk_server.py` - Seqtk sequence toolkit (13 tools)
+
+**Assembly & Annotation (2 servers, 5 tools)**:
+21. `flye_server.py` - Flye long-read assembly (1 tool)
+22. `busco_server.py` - BUSCO genome completeness (4 tools)
+
+**Epigenomics (3 servers, 17 tools)**:
+23. `macs3_server.py` - MACS3 peak calling (4 tools)
+24. `deeptools_server.py` - DeepTools ChIP/ATAC analysis (6 tools)
+25. `meme_server.py` - MEME motif discovery (7 tools)
+
+**Utilities (2 servers, 7 tools)**:
+26. `bedtools_server.py` - BEDTools genomic ranges (3 tools)
+27. `gunzip_server.py` - Decompression utilities (4 tools)
+
+**Total**: 113+ tool operations across 27 servers
 
 **FastMCP Pattern**:
 ```python
