@@ -209,23 +209,27 @@ class ResearchState:
 ### Alternative State Classes
 
 #### DeepAgentState
-**Location**: `DeepResearch/src/datatypes/deep_agent_state.py:190-240`
+**Location**: `DeepResearch/src/datatypes/deep_agent_state.py`
 
 ```python
-@dataclass
-class DeepAgentState:
+class DeepAgentState(BaseModel):
     session_id: str
-    conversation_history: list[Message]
-    shared_state: dict[str, Any]
-    todos: list[Todo]
-    files: dict[str, FileInfo]
-    execution_history: ExecutionHistory
+    todos: list[Todo] = Field(default_factory=list)
+    files: dict[str, FileInfo] = Field(default_factory=dict)
+    current_directory: str = Field("/", description="Current working directory")
+    active_tasks: list[str] = Field(default_factory=list)
+    completed_tasks: list[str] = Field(default_factory=list)
+    conversation_history: list[dict[str, Any]] = Field(default_factory=list)
+    shared_state: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime | None = None
 ```
 
-**Memory Integration Opportunity**: `conversation_history` is perfect for multi-turn memory.
+**Memory Integration Opportunity**: `conversation_history` and `shared_state` are natural memory candidates.
 
 #### RAGState
-**Location**: `DeepResearch/src/statemachines/rag_workflow.py:59-100`
+**Location**: `DeepResearch/src/statemachines/rag_workflow.py`
 
 ```python
 @dataclass
@@ -234,6 +238,7 @@ class RAGState:
     rag_config: RAGConfig | None = None
     documents: list[Document] = field(default_factory=list)
     rag_response: RAGResponse | None = None
+    rag_result: dict[str, Any] | None = None
     processing_steps: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
     config: DictConfig | None = None
@@ -590,7 +595,7 @@ class AgentOrchestrator:
             return loop_result
 ```
 
-### Memory Integration Point #4: Nested Loop Memory Context
+### Memory Integration Point #4: Nested Loop Memory Context (proposed)
 
 **Proposed Enhancement**:
 ```python
@@ -623,8 +628,8 @@ def spawn_nested_loop(...) -> dict[str, Any]:
 
 ```
 configs/
-├── config.yaml (main entry, 118 lines)
-├── app_modes/ (4 configs: loss_driven, multi_level_react, etc.)
+├── config.yaml (main entry)
+├── app_modes/ (loss_driven, multi_level_react, etc.)
 ├── bioinformatics/ (agents, data_sources, tools, workflow, variants/)
 ├── challenge/ (default.yaml)
 ├── db/ (datasets, neo4j, postgres, sqlite3)
@@ -632,8 +637,8 @@ configs/
 ├── deepsearch/ (default.yaml)
 ├── llm/ (llamacpp_local, tgi_local, vllm_pydantic)
 ├── neo4j/ (orchestrator, operations/)
-├── prompts/ (30+ prompt configs)
-└── statemachines/flows/ (16+ flow configs)
+├── prompts/ (prompt configs)
+└── statemachines/flows/ (multiple flow configs)
 ```
 
 ### Main Configuration File
@@ -947,23 +952,23 @@ class VectorStore(ABC):
 
 ### Document Structure (Perfect for Memory)
 
-**Location**: `DeepResearch/src/datatypes/rag.py:76-200`
+**Location**: `DeepResearch/src/datatypes/rag.py` (Document model)
 
 ```python
 class Document(BaseModel):
-    id: str
+    id: str = Field(default_factory=lambda: generate_id("doc"))
     content: str
-    chunks: list[Chunk] = []
-    metadata: dict[str, Any]
-    embedding: list[float] | Any | None
-    created_at: datetime
-    updated_at: datetime | None
+    chunks: list[Chunk] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    embedding: list[float] | Any | None = None
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime | None = None
 
     # Bioinformatics-specific (reusable for memory)
-    bioinformatics_type: str | None
-    source_database: str | None
-    cross_references: dict[str, list[str]]
-    quality_score: float | None
+    bioinformatics_type: str | None = None
+    source_database: str | None = None
+    cross_references: dict[str, list[str]] = Field(default_factory=dict)
+    quality_score: float | None = None
 ```
 
 **Memory Integration**: Create `MemoryDocument` subclass:
@@ -1150,7 +1155,7 @@ def operation(param1: str, param2: int) -> dict[str, Any]:
 
 ### ExecutionHistory - Already Tracks Everything!
 
-**Location**: `DeepResearch/src/utils/execution_history.py:40-150`
+**Location**: `DeepResearch/src/utils/execution_history.py`
 
 ```python
 @dataclass
@@ -1158,42 +1163,40 @@ class ExecutionItem:
     step_name: str
     tool: str
     status: ExecutionStatus
-    result: dict[str, Any] | None
-    error: str | None
-    timestamp: float
-    parameters: dict[str, Any] | None
-    duration: float | None
-    retry_count: int
+    result: dict[str, Any] | None = None
+    error: str | None = None
+    timestamp: float = field(default_factory=lambda: datetime.now(timezone.utc).timestamp())
+    parameters: dict[str, Any] | None = None
+    duration: float | None = None
+    retry_count: int = 0
 
 @dataclass
 class ExecutionHistory:
-    items: list[ExecutionItem]
-    start_time: float
-    end_time: float | None
+    items: list[ExecutionItem] = field(default_factory=list)
+    start_time: float = field(default_factory=lambda: datetime.now(timezone.utc).timestamp())
+    end_time: float | None = None
 
     def add_item(self, item: ExecutionItem) -> None:
-        """Add execution item."""
-        pass
+        self.items.append(item)
 
     def get_successful_steps(self) -> list[ExecutionItem]:
-        """Get all successful executions."""
-        pass
+        return [item for item in self.items if item.status == ExecutionStatus.SUCCESS]
 
     def get_failed_steps(self) -> list[ExecutionItem]:
-        """Get all failed executions."""
-        pass
+        return [item for item in self.items if item.status == ExecutionStatus.FAILED]
 
     def get_failure_patterns(self) -> dict[str, int]:
-        """Analyze failure patterns."""
-        pass
+        failure_patterns = {}
+        for item in self.get_failed_steps():
+            error_type = self._categorize_error(item.error)
+            failure_patterns[error_type] = failure_patterns.get(error_type, 0) + 1
+        return failure_patterns
 
-    def to_dict(self) -> dict[str, Any]:
-        """Serialize to dictionary."""
-        pass
+    def get_execution_summary(self) -> dict[str, Any]:
+        ...
 
     def save_to_file(self, filepath: str) -> None:
-        """Save to JSON file."""
-        pass
+        ...
 ```
 
 **Memory Integration Point #7: ExecutionHistory → Memory Pipeline**
@@ -1466,14 +1469,14 @@ graph TB
 
 | # | Integration Point | Location | Type | Complexity | Priority |
 |---|------------------|----------|------|------------|----------|
-| 1 | ResearchState Fields | `app.py:45-96` | State | Low | P0 (Critical) |
-| 2 | AgentDependencies | `datatypes/agents.py:28-34` | DI | Low | P0 (Critical) |
-| 3 | Memory Tools | `agents.py:149-169` | Tools | Medium | P1 (High) |
-| 4 | Nested Loop Context | `agent_orchestrator.py:37-150` | Orchestration | High | P2 (Medium) |
+| 1 | ResearchState Fields | `DeepResearch/app.py` | State | Low | P0 (Critical) |
+| 2 | AgentDependencies | `DeepResearch/src/datatypes/agents.py` | DI | Low | P0 (Critical) |
+| 3 | Memory Tools | `DeepResearch/agents.py` subclasses | Tools | Medium | P1 (High) |
+| 4 | Nested Loop Context | `DeepResearch/src/agents/agent_orchestrator.py` | Orchestration | High | P2 (Medium) |
 | 5 | Memory Config | `configs/` | Config | Low | P0 (Critical) |
-| 6 | Tool Execution Tracking | `tools/base.py:10-64` | Tools | Medium | P1 (High) |
-| 7 | ExecutionHistory Bridge | `utils/execution_history.py` | Bridge | Medium | P1 (High) |
-| 8 | Graph Node Hooks | `app.py:99-1072` | Workflow | Low | P0 (Critical) |
+| 6 | Tool Execution Tracking | `DeepResearch/src/tools/base.py` or `src/utils/tool_registry.py` | Tools | Medium | P1 (High) |
+| 7 | ExecutionHistory Bridge | `DeepResearch/src/utils/execution_history.py` | Bridge | Medium | P1 (High) |
+| 8 | Graph Node Hooks | `DeepResearch/app.py` nodes | Workflow | Low | P0 (Critical) |
 
 **Total Integration Points**: 8
 **Critical Path**: Points #1, #2, #5, #8 (State, Dependencies, Config, Node Hooks)
