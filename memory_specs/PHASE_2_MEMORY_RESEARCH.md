@@ -1131,7 +1131,7 @@ For **Phase 3 Implementation Spec**, validate chosen system against:
 - [ ] **Multi-Agent Coordination**: Can implement hierarchical memory (Insight/Query/Interaction)?
 - [ ] **Tool Execution Tracking**: Can store ExecutionHistory items (tool, status, result, error)?
 - [ ] **Hydra Configuration**: Can configure memory provider via YAML (provider: mem0/letta/zep)?
-- [ ] **MCP Server Workflows**: Can handle 27 servers × 113 tools without token limits?
+- [ ] **MCP Server Workflows**: Can handle ~28 bioinformatics modules + the wider tool stack without token limits?
 - [ ] **Retrieval Performance**: <500ms latency for interactive research workflows?
 - [ ] **Production Deployment**: SaaS fallback or self-hosted OSS (Docker)?
 - [ ] **Testing Strategy**: Can mock memory provider for unit tests?
