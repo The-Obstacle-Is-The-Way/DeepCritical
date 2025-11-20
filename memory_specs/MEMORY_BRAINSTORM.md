@@ -7,6 +7,14 @@
 **Requestor**: @Josephrp (Tonic)
 **Main Contributor**: @MarioAderman
 
+### Issue snapshot (from GitHub)
+- Component: Core Workflow Engine
+- Feature Type: Integration (External Service)
+- Priority: Critical (Blocking current work)
+- Implementation Notes: see discussions
+- Additional Context: see discussions
+- Labels: enhancement; good first issue; help wanted
+
 ---
 
 ## Problem Statement
