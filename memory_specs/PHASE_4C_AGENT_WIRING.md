@@ -200,7 +200,11 @@ context = ExecutionContext(
 
 **Propagate the same `memory_provider` instance** into:
 - `AgentOrchestrator(memory_provider=memory_provider)` so all agents receive it through `AgentDependencies`.
-- Any additional flows that construct `ExecutionContext` or `ExecutionHistory` (Bioinformatics, DeepSearch) using their own `workflow_id`/`agent_id` values for namespace isolation.
+- Any additional flows that construct `ExecutionContext` or `ExecutionHistory` (Bioinformatics, DeepSearch) using their own `workflow_id`/`agent_id` values for namespace isolation (e.g., `workflow_id="bio"`, `agent_id="bio_executor"`; `workflow_id="deepsearch"`, `agent_id="deepsearch_executor"`).
+
+**When memory is disabled** (`memory.enabled=false`):
+- `get_memory_provider` returns `None`.
+- Tools (`recall_memory`/`save_note`) and hooks should no-op safely (current code paths handle `memory=None`).
 
 ---
 

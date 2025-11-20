@@ -187,6 +187,7 @@ class Mem0Adapter(MemoryProvider):
 - **Response Normalization**: Handles `{"results": [...]}` vs `[...]` formats
 - **Config Validation**: Raises clear errors for missing credentials
 - **Trace Encoding**: Same format as MockAdapter for consistency
+- **Version Pin Recommendation**: Use a tested Mem0 SDK (e.g., `uv add mem0ai==<tested_version> neo4j==5.* testcontainers[neo4j]==4.*`) and keep the sync→async bridge (`run_in_executor`) because the SDK is synchronous.
 
 ### B. Factory Update
 **File**: `DeepResearch/src/memory/factory.py`
@@ -288,7 +289,7 @@ uv run deepresearch memory.provider=mock
 
 
     @pytest.mark.asyncio
-    @pytest.mark.containerized
+    @pytest.mark.containerized  # Skip in CI when Docker unavailable
     async def test_mem0_add_and_search_with_neo4j():
         with Neo4jContainer("neo4j:5.22") as neo4j:
             cfg = OmegaConf.create(

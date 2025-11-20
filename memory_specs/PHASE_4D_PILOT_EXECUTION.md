@@ -144,6 +144,7 @@ async def test_history_without_memory_still_works():
 - ✅ Trace metadata structure (`type="trace"`, `workflow_id`)
 - ✅ Backward compatibility (memory=None works)
 - ✅ Async test markers
+- ✅ Mark `@pytest.mark.containerized` for Neo4j-backed runs if you later swap in `Mem0Adapter`; safe skip in CI without Docker.
 
 ---
 
