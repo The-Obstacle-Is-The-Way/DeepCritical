@@ -114,7 +114,7 @@ graph TB
     style VectorStoreABC fill:#9c27b0,stroke:#6a1b9a,stroke-width:3px
 ```
 
-### Data Flow Through System
+### Data Flow Through System (conceptual)
 
 ```mermaid
 sequenceDiagram
@@ -269,7 +269,7 @@ graph LR
     style M2 fill:#2196f3,stroke:#1565c0,stroke-width:2px
 ```
 
-**Example Node Pattern**:
+**Example Node Pattern (with proposed memory hooks)**:
 ```python
 @dataclass
 class PlanNode(BaseNode[ResearchState]):
@@ -278,14 +278,17 @@ class PlanNode(BaseNode[ResearchState]):
         question = ctx.state.question
         config = ctx.state.config
 
-        # 2. MEMORY INTEGRATION: Retrieve relevant context
-        if ctx.state.execution_context:
-            memories = await ctx.state.execution_context.memory_client.retrieve(
+        # 2. MEMORY INTEGRATION (proposed): Retrieve relevant context
+        if ctx.state.memory_client:
+            memories = await ctx.state.memory_client.retrieve(
                 query=question,
                 filters={"agent_type": "planner"},
-                top_k=3
+                top_k=3,
+                session_id=ctx.state.memory_session_id,
             )
-            context = "\n".join([m.content for m in memories])
+            context = "\n".join(m.content for m in memories)
+        else:
+            context = None
 
         # 3. Perform work
         planner_agent = PlannerAgent(...)
@@ -295,15 +298,16 @@ class PlanNode(BaseNode[ResearchState]):
         ctx.state.plan = plan
         ctx.state.notes.append(f"Plan created with {len(plan)} steps")
 
-        # 5. MEMORY INTEGRATION: Store decision
-        if ctx.state.execution_context:
-            await ctx.state.execution_context.memory_client.store(
+        # 5. MEMORY INTEGRATION (proposed): Store decision
+        if ctx.state.memory_client:
+            await ctx.state.memory_client.store(
                 content=f"Plan: {plan}",
                 metadata={
                     "node": "PlanNode",
                     "question": question,
-                    "timestamp": datetime.now().isoformat()
-                }
+                    "timestamp": datetime.now().isoformat(),
+                    "session_id": ctx.state.memory_session_id,
+                },
             )
 
         # 6. Return next node
@@ -516,34 +520,14 @@ def _register_memory_tools(self):
 
 ### Workflow types in `app.py` (current)
 
-**Location**: `DeepResearch/app.py` (Lines 189-1072)
-
-1. **PrimaryREACTWorkflow** (Lines 189-454)
-   - Spawns subworkflows
-   - Tracks execution state
-   - Generates comprehensive output
-
-2. **EnhancedREACTWorkflow** (Lines 457-706)
-   - Supports 4 modes: SINGLE_REACT, MULTI_LEVEL_REACT, NESTED_ORCHESTRATION, LOSS_DRIVEN
-   - Break conditions and loss functions
-
-3. **Default Workflow** (Lines 710-749)
-   - Search → Analyze → Synthesize
-
-4. **Challenge Flow** (Lines 751-779)
-   - PrepareChallenge → RunChallenge → EvaluateChallenge
-
-5. **DeepSearch Flow** (Lines 781-841)
-   - DSPlan → DSExecute → DSAnalyze → DSSynthesize
-
-6. **PRIME Flow** (Lines 843-996)
-   - PrimeParse → PrimePlan → PrimeExecute → PrimeEvaluate
-
-7. **Bioinformatics Flow** (Lines 998-1035)
-   - BioinformaticsParse → BioinformaticsFuse
-
-8. **RAG Flow** (Lines 1037-1072)
-   - RAGParse → RAGExecute
+- PrimaryREACTWorkflow (spawns subworkflows, tracks execution state)
+- EnhancedREACTWorkflow (modes: SINGLE_REACT, MULTI_LEVEL_REACT, NESTED_ORCHESTRATION, LOSS_DRIVEN)
+- Default workflow (Search → Analyze → Synthesize)
+- Challenge flow (PrepareChallenge → RunChallenge → EvaluateChallenge)
+- DeepSearch flow (DSPlan → DSExecute → DSAnalyze → DSSynthesize)
+- PRIME flow (PrimeParse → PrimePlan → PrimeExecute → PrimeEvaluate)
+- Bioinformatics flow (BioinformaticsParse → BioinformaticsFuse)
+- RAG flow (RAGParse → RAGExecute)
 
 ### Workflow Execution Pattern
 
