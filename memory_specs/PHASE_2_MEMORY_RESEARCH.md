@@ -2,28 +2,33 @@
 
 **Goal**: Survey the CURRENT (November 2025) state-of-the-art memory systems for agentic AI, with eyes on DeepCritical/DeepResearch codebase integration.
 
-**Philosophy**: Focus on production-ready systems with proven performance, not experimental frameworks. Evaluate how each architecture fits our Phase 1 baseline: Hydra + Pydantic Graph + Pydantic AI multi-agent system with 27 MCP servers and tool-heavy workflows.
+**Philosophy**: Focus on production-ready systems with proven performance, not experimental frameworks. Evaluate how each architecture fits our Phase 1 baseline: Hydra + Pydantic Graph + Pydantic AI multi-agent system with ~28 bioinformatics `_server.py` modules (FastMCP/CLI, mixed completeness) and tool-heavy workflows.
 
 ---
 
 ## Executive Summary
 
-**Top Contenders Evaluated**: 7 memory architectures across three categories:
+**Top Contenders Evaluated**: 8 memory architectures (6 with public code, 2 paper-only kept as pattern references):
 1. **Production-Ready Platforms**: Mem0, Letta (MemGPT), Zep
-2. **Novel Research Systems (2025)**: G-Memory, O-Mem, H-MEM, MemOS
+2. **Novel Research Systems (2025)**: G-Memory (code), MemOS (code), O-Mem (paper-only), H-MEM (paper-only)
 3. **Framework-Native Solutions**: LangGraph Memory (LangMem)
 
 **Key Finding**: No single system wins across all dimensions. The choice depends on:
 - **Multi-agent coordination needs**: G-Memory's hierarchical graphs shine
 - **Production maturity**: Mem0 (SaaS) and Letta (open-source) are battle-tested
 - **Temporal reasoning**: Zep's bi-temporal knowledge graphs are cutting-edge
-- **Efficiency at scale**: H-MEM's hierarchical retrieval is fastest (100ms latency)
+- **Efficiency at scale**: H-MEM (paper-only) claims fastest hierarchical retrieval (<100ms) but has no public code
 - **Hybrid flexibility**: Mem0's graph+vector+KV combo offers versatility
 
 **Potential Hybrid Approach**: Combine architectural patterns (e.g., Mem0's hybrid storage + G-Memory's multi-agent hierarchy + Zep's temporal modeling) rather than marrying platforms.
 
 **Official GitHub Repositories**: See `referencerepos.md` for verified links to all source repos
 **Local Reference Copies**: All available systems cloned to `/reference_repo/` (`.git` directories removed)
+
+**Code Availability Audit (Nov 19, 2025)**:
+- ✅ Public code present locally: Mem0, Letta, Zep, G-Memory, MemOS variants (MemTensor/BAI-LAB/AGIResearch), LangMem, A-MEM, MemEngine, OpenMemory, Memori (see `reference_repo/`)
+- ❌ No public code found: O-Mem, H-MEM (paper-only; not present in `reference_repo/`)
+- **Decision**: Treat O-Mem and H-MEM as *pattern references only*, not Phase 3 implementation candidates unless code ships.
 
 ---
 
@@ -82,7 +87,7 @@
 ✅ **Hybrid flexibility**: Graph+vector+KV covers semantic, relational, and exact-match retrieval
 ✅ **Neo4j compatibility**: Already have Neo4j in Phase 1 baseline (currently for RAG)
 ✅ **Multi-framework support**: Works with LangChain, LlamaIndex (could bridge to Pydantic AI)
-✅ **Token efficiency**: 90% savings critical for tool-heavy workflows (27 MCP servers)
+✅ **Token efficiency**: 90% savings critical for tool-heavy workflows (~28 bioinformatics modules + other tools)
 ✅ **Profile-friendly**: Graph structure naturally maps to Mario's agent profiles (BioinformaticsAgent needs papers/genes, PRIMEAgent needs tool_history)
 
 ### Cons
@@ -302,7 +307,7 @@ Excellent for temporal reasoning and structured memory. Concerns: proprietary en
 
 ❌ **Research system**: Not production-ready, no SaaS or mature OSS release
 ❌ **Implementation gaps**: Paper lacks storage backend, deployment, and API details
-❌ **Unproven scalability**: Benchmarks use small-scale tasks (not 27 MCP servers + 113 tools)
+❌ **Unproven scalability**: Benchmarks use small-scale tasks (not ~28 bioinformatics modules + the broader tool stack)
 ❌ **Maintenance risk**: Academic project may not receive long-term support
 ❌ **Integration complexity**: Would require custom implementation to integrate with Pydantic Graph
 
@@ -317,6 +322,7 @@ BEST architectural fit for multi-agent coordination, but lacks production maturi
 ## 5. O-Mem: Brain-Inspired Multi-Faceted Memory
 
 **Source**: arXiv 2511.13593 (Nov 2025), research system (not production SaaS)
+**Code Availability**: ❌ No public repository as of Nov 19, 2025 (not present in `reference_repo/`)
 
 **Official GitHub**: ❌ **NO PUBLIC REPOSITORY** (as of Nov 19, 2025)
 **arXiv Paper**: https://arxiv.org/abs/2511.13593
@@ -436,8 +442,8 @@ Interesting persona/working memory patterns for agent profiles, but immature and
 
 ### Pros (For Our Codebase)
 
-✅ **FASTEST retrieval**: <100ms latency (vs. Mem0's 710ms, Zep's higher)
-✅ **Scalability**: Complexity reduction critical for large memory volumes (27 MCP servers × tool histories)
+✅ **FASTEST retrieval (per paper)**: <100ms latency (vs. Mem0's 710ms, Zep's higher)
+✅ **Scalability**: Complexity reduction critical for large memory volumes (~28 bioinformatics modules × tool histories)
 ✅ **Hierarchical structure**: Domain/Category layers map to flow-based routing (PRIME, Bioinformatics, DeepSearch)
 ✅ **User feedback integration**: Could adapt to researcher preferences over time
 ✅ **Multi-hop strength**: +21.25 F1 points for complex reasoning (tool chains: MCP → Agent → Orchestrator)
@@ -452,7 +458,7 @@ Interesting persona/working memory patterns for agent profiles, but immature and
 
 ### Suitability for DeepCritical/DeepResearch
 
-**Score: 7/10**
+**Score: 7/10** (paper-only; pattern reference unless code ships)
 
 BEST performance metrics (latency, multi-hop accuracy), but lacks production maturity. Hierarchical structure fits flow-based routing.
 
@@ -669,10 +675,10 @@ Low priority unless migrating to LangGraph (not recommended given Pydantic Graph
 
 ### 6. Hierarchical Efficiency (Index-Based Routing)
 
-**Best Example**: H-MEM
-**Why It Matters**: Scalability for large memory volumes (27 MCP servers × tool histories)
+**Best Example**: H-MEM (paper-only; no public code as of Nov 19, 2025)
+**Why It Matters**: Scalability for large memory volumes (~28 bioinformatics modules × tool histories)
 - **Layer-by-layer traversal**: Domain → Category → Trace → Episode (O((a+k·300)·D) vs. O(a·10⁶·D))
-- **<100ms latency**: Critical for interactive research workflows
+- **<100ms latency (per paper)**: Critical for interactive research workflows
 
 **Fit for DeepCritical/DeepResearch**:
 - **Flow-based routing**: PRIME, Bioinformatics, DeepSearch → natural hierarchy (Domain layer)

@@ -40,9 +40,9 @@ Mario has designed a **Ports & Adapters Pattern** architecture:
 ### Architecture Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
+┌──────────────────────────────────────────────────────────────────────────┐
 │                         WORKFLOW LEVEL                                   │
-│  BioinformaticsState, PRIMEState, etc. (session_id tracking)            │
+│  BioinformaticsState, PRIMEState, etc. (session_id tracking)             │
 │                              ▼                                           │
 │                        ┌──────────┐                                      │
 │                        │ BaseAgent│ (auto-retrieve/store)                │
@@ -67,13 +67,13 @@ Mario has designed a **Ports & Adapters Pattern** architecture:
                 └─────────────┬──────────────┘
               ┌───────────────┼───────────────┐
               ▼               ▼               ▼
-    ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-    │ CustomProvider│  │BaselineProvider│ │LettaAdapter  │  ◄── ADAPTERS
-    │ (hierarchical)│  │   (FIFO)      │  │(ext. wrapper)│      (swappable)
-    └───────┬──────┘  └───────┬──────┘  └───────┬──────┘
-            │                 │                  │
-            └─────────────────┼──────────────────┘
-                              ▼
+    ┌───────────────┐  ┌────────────────┐  ┌──────────────┐
+    │ CustomProvider│  │BaselineProvider│  │LettaAdapter  │  ◄── ADAPTERS
+    │ (hierarchical)│  │   (FIFO)       │  │(ext. wrapper)│    (swappable)
+    └───────┬───────┘  └───────┬────────┘  └───────┬──────┘
+            │                  │                   │
+            └──────────────────┼───────────────────┘
+                               ▼
               ┌───────────────────────────────────────┐
               │      STORAGE LAYER (pluggable)        │
               ├───────────────────────────────────────┤
