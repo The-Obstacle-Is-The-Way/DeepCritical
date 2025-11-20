@@ -365,126 +365,6 @@ BEST architectural fit for multi-agent coordination, but lacks production maturi
 
 ---
 
-## 7. MemOS: Task-Concept-Fact Memory OS
-
-**Source**: PDF release July 2025 (statics.memtensor.com.cn), research system
-
-**Official GitHub (3 variants)**:
-- **MemTensor**: https://github.com/MemTensor/MemOS (Open-source framework for LLMs)
-- **BAI-LAB**: https://github.com/BAI-LAB/MemoryOS (EMNLP 2025 Oral, arXiv 2507.03724)
-- **AGIResearch**: https://github.com/agiresearch/MemOS (Memory layer for LLM agents)
-
-**arXiv Paper**: https://arxiv.org/abs/2507.03724 (MemOS: A Memory OS for AI System)
-**Local References**: `/reference_repo/memos-memtensor/`, `/reference_repo/memos-bailab/`, `/reference_repo/memos-agiresearch/`
-
-### Architecture
-
-**Hierarchical Graph Structure**:
-- **Task-Concept-Fact Paths**: Organizes memory as directed graph
-  - Tasks → Concepts → Facts (hierarchical traversal)
-- **Three-Layer Architecture**:
-  1. **Interface Layer**: MemReader, Memory API
-  2. **Operation Layer**: MemOperator, MemScheduler, MemLifecycle
-  3. **Infrastructure Layer**: MemGovernance, MemVault, MemStore
-
-**Layered Memory Hierarchy** (OS-inspired):
-- **Working Memory**: Active context
-- **Long-Term Storage**: Persistent knowledge
-- **Cold Archives**: Infrequently accessed data
-- Governed by: recency, access frequency, importance
-
-**Scheduling & Multi-Agent Support**:
-- MemScheduler: Task-oriented memory management
-- Cross-platform memory migration
-- Multi-turn dialogue + continuous knowledge evolution
-- Personalization + multi-role modeling
-
-### Performance Benchmarks
-
-**Not Reported**: PDF appears corrupted (details unavailable)
-
-### Integration Patterns
-
-**Modular Design**: Installable system supporting explicit memory operations + systematic governance
-**Storage**: Custom (MemVault, MemStore)
-**Deployment**: Research prototype (implementation details incomplete)
-
-### Pros (For Our Codebase)
-
-✅ **Task-oriented**: Task-Concept-Fact paths map to workflow nodes (Plan → Execute → Analyze)
-✅ **Scheduling**: MemScheduler could optimize memory access for tool-heavy workflows
-✅ **Multi-role modeling**: Could support agent profiles (BioinformaticsAgent, PRIMEAgent, etc.)
-✅ **Memory governance**: Lifecycle management (recency, frequency, importance) reduces clutter
-
-### Cons
-
-❌ **Research system**: Not production-ready, incomplete documentation
-❌ **Corrupted PDF**: Full architectural details unavailable
-❌ **No benchmarks**: Performance unclear
-❌ **Custom infrastructure**: MemVault/MemStore not compatible with Neo4j, Qdrant, etc.
-❌ **Maintenance risk**: Academic project may not receive long-term support
-
-### Suitability for DeepCritical/DeepResearch
-
-**Score: 5/10**
-
-Interesting task-oriented design, but immature and poorly documented. Custom infrastructure is a red flag.
-
----
-
-## 8. LangGraph Memory (LangMem)
-
-**Source**: LangChain/LangGraph ecosystem, template-based starting point (not standalone system)
-
-**Official GitHub**: https://github.com/langchain-ai/langmem
-**Documentation**: https://langchain-ai.github.io/langmem/
-**Organization**: https://github.com/langchain-ai
-**Local Reference**: `/reference_repo/langmem-official/`
-
-### Architecture
-
-**Three Memory Types**:
-1. **Episodic Memory**: Interaction-specific context (short-term)
-2. **Semantic Memory**: Generalized knowledge (long-term)
-3. **Procedural Memory**: Skill/task execution patterns
-
-**Integration Pattern**:
-- LangGraph Memory Service: **example template** for custom solutions
-- Seamless integration if already using LangGraph
-- Flexible abstractions for diverse use cases
-
-### Performance Benchmarks
-
-**Not Reported**: Template-based approach (no standalone benchmarks)
-
-### Integration Patterns
-
-**Framework Integration**: Native LangGraph support
-**Storage**: Pluggable (user-defined backends)
-**Deployment**: Self-managed (no SaaS offering)
-
-### Pros (For Our Codebase)
-
-✅ **Framework-native**: If migrating to LangGraph, memory is built-in
-✅ **Flexible abstractions**: Customize to fit Pydantic Graph patterns
-✅ **Template-based**: Learn architectural patterns without vendor lock-in
-
-### Cons
-
-❌ **Not a standalone system**: Example template, not production-ready framework
-❌ **Requires LangGraph**: Our codebase uses Pydantic Graph (different abstraction)
-❌ **DIY implementation**: No out-of-box solution (vs. Mem0/Letta/Zep)
-❌ **No benchmarks**: Performance unclear
-❌ **Migration cost**: Would require rewriting workflows from Pydantic Graph → LangGraph
-
-### Suitability for DeepCritical/DeepResearch
-
-**Score: 4/10**
-
-Low priority unless migrating to LangGraph (not recommended given Pydantic Graph investment).
-
----
-
 ## Comparison Matrix
 
 | System | Multi-Agent | Prod Maturity | Latency | Accuracy | Pydantic AI Fit | Neo4j Compat | Hybrid Storage |
@@ -493,12 +373,12 @@ Low priority unless migrating to LangGraph (not recommended given Pydantic Graph
 | **Letta** | ❌ Single | ✅ Cloud + OSS | - | 74.0% (LoCoMo) | ✅ Agent-native | ⚠️ Custom adapter | ❌ Filesystem |
 | **Zep** | ❌ Single | ✅ Cloud + OSS | <100ms (est) | 94.8% (DMR) | ⚠️ Unclear | ❌ Proprietary | ❌ Graph-only |
 | **G-Memory** | ✅ Native | ❌ Research | - | +20.89% (action) | ⚠️ Custom impl | ⚠️ Unclear | ⚠️ Hierarchical graphs |
-| **O-Mem** | ❌ Single | ❌ Paper-only | - | - (94% token↓, per paper) | ⚠️ Custom impl | ⚠️ Unclear | ❌ No graph |
-| **H-MEM** | ❌ Single | ❌ Paper-only | <100ms (per paper) | +14.98 F1 (per paper) | ⚠️ Custom impl | ⚠️ Unclear | ❌ Hierarchical only |
-| **MemOS** | ⚠️ Multi-role | ❌ Research | - | - | ⚠️ Custom impl | ❌ Custom infra | ⚠️ Task-Concept-Fact |
-| **LangMem** | ❌ Single | ⚠️ Template | - | - | ❌ LangGraph req | ⚠️ Pluggable | ⚠️ User-defined |
+| **O-Mem** | ❌ Single | 🗑️ Paper-only | - | 94% token↓ (claim) | N/A (no code) | N/A | N/A |
+| **H-MEM** | ❌ Single | 🗑️ Paper-only | <100ms (claim) | +14.98 F1 (claim) | N/A (no code) | N/A | N/A |
 
-**Legend**: ✅ Strong | ⚠️ Partial/Unclear | ❌ Weak/Missing
+**Legend**: ✅ Strong | ⚠️ Partial/Unclear | ❌ Weak/Missing | 🗑️ Excluded/Pattern-Only
+
+**Note**: O-Mem and H-MEM kept as **pattern references only** (no code available for evaluation).
 
 ---
 
@@ -1074,10 +954,46 @@ These systems may be evaluated in future phases if Phase 3 prototyping reveals g
 
 ---
 
+## Systems Excluded from Phase 3 (But Considered)
+
+During Phase 2 research, we evaluated **10+ memory systems** comprehensively before narrowing to the 6 detailed above. The following systems were **considered but excluded** from Phase 3 planning for specific, documented reasons:
+
+### MemOS (3 variants: MemTensor, BAI-LAB, AGIResearch)
+
+**Why excluded:**
+
+- ❌ **Corrupted documentation**: Primary PDF source unreadable; architectural details incomplete
+- ❌ **No benchmarks**: Zero performance data (latency, accuracy, token efficiency)
+- ❌ **Custom infrastructure**: MemVault/MemStore incompatible with our Neo4j/Qdrant/Chroma stack
+- ❌ **3 confusing variants**: Unclear which implementation is canonical; divergent codebases
+
+**What we learned:** Task-Concept-Fact hierarchy is an interesting pattern, but insufficient documentation + custom infrastructure = non-starter for Phase 3.
+
+### LangMem (LangGraph Memory)
+
+**Why excluded:**
+
+- ❌ **LangGraph dependency**: Requires full migration from Pydantic Graph → LangGraph (massive rewrite)
+- ❌ **Template-only**: Not a production system; just example patterns
+- ❌ **No unique value**: Memory patterns available in production systems (Mem0, Letta, Zep)
+- ❌ **Migration cost unjustified**: Pydantic Graph investment too large to abandon
+
+**What we learned:** Framework-native memory is valuable **if you're already using that framework**. We're not.
+
+### Why We Document Exclusions
+
+**Transparency**: Future reviewers (Mario, stakeholders) can see we did comprehensive research, not just "picked favorites."
+**Learning**: Documenting *why* systems failed evaluation criteria is as valuable as documenting *why* systems succeeded.
+**Future-proofing**: If MemOS ships better docs or LangMem becomes framework-agnostic, we have context to re-evaluate.
+
+---
+
 **Status**: ✅ Phase 2 Research Complete
+
 **Next**: Phase 3 - Combined Implementation Spec (marry Phase 1 baseline + Phase 2 research + Mario's Ports & Adapters proposal)
 
 **Related Documentation**:
+
 - `referencerepos.md` - Official GitHub links for all memory systems
 - `PHASE_1_BASELINE_FOUNDATION.md` - DeepCritical/DeepResearch codebase baseline
 - `META_PLAN.MD` - 4-phase approach overview
