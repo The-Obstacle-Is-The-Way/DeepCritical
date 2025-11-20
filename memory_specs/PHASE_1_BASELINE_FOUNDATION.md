@@ -27,11 +27,11 @@
 ## Executive Summary
 
 DeepCritical/DeepResearch is a **Hydra + Pydantic Graph + Pydantic AI multi-agent system** with:
-- **214 Python files** across the codebase
-- **65+ tools** including 18 MCP bioinformatics servers
-- **3 vector stores** (Neo4j, FAISS, Chroma/Qdrant)
-- **8+ workflows** (PRIME, Bioinformatics, DeepSearch, RAG, etc.)
-- **22+ specialized agents** (Parser, Planner, Executor, Bioinformatics, etc.)
+- **~379 Python files** across the repo (including tests)
+- **Dozens of tools**, including **18 MCP bioinformatics servers**
+- **Vector stores implemented**: Neo4j and FAISS (other backends are referenced in docs/configs but not implemented here)
+- **Multiple workflows**: default/search, challenge, PRIME, Bioinformatics, RAG, DeepSearch, Enhanced/Primary REACT orchestration, plus workflow-pattern statemachines
+- **Many specialized agents** (e.g., Parser, Planner, Executor, Bioinformatics, DeepSearch, Orchestrator, RAG, DeepAgent variants)
 
 **Key Finding**: The architecture already has **natural integration points** for memory at every layer:
 - **State Layer**: `ResearchState` flows through graph nodes
@@ -74,7 +74,7 @@ graph TB
     end
 
     subgraph "Tool Ecosystem"
-        ToolRegistry[ToolRegistry<br/>65+ tools]
+        ToolRegistry[ToolRegistry<br/>tool registry]
         MCPServers[MCP Servers<br/>18 bioinformatics tools]
         ExecHistory[ExecutionHistory<br/>Tracks all executions]
     end
@@ -391,7 +391,7 @@ class AgentDependencies:
 
 ### Specialized Agent Types
 
-**22+ Agent Classes Found**:
+**Agent classes found (examples)**:
 1. **ParserAgent** - Parses user questions
 2. **PlannerAgent** - Creates execution plans
 3. **ExecutorAgent** - Executes tool-based plans
@@ -515,7 +515,7 @@ def _register_memory_tools(self):
 
 ## Workflow Patterns (Pydantic Graph)
 
-### 8+ Workflow Types
+### Workflow types in `app.py` (current)
 
 **Location**: `DeepResearch/app.py` (Lines 189-1072)
 
@@ -951,11 +951,12 @@ class VectorStore(ABC):
         pass
 ```
 
-**Implementations Available**:
-1. `Neo4jVectorStore` (production, graph queries)
-2. `FAISSVectorStore` (local, lightweight)
-3. ChromaDB (via integration, in-memory)
-4. Qdrant (via integration, cloud-ready)
+**Implementations in repo**:
+1. `Neo4jVectorStore` (graph + vectors)
+2. `FAISSVectorStore` (local, in-memory/disk)
+
+**Referenced elsewhere (not implemented here)**:
+- ChromaDB, Qdrant, Pinecone, Weaviate, Postgres, Elasticsearch, Milvus
 
 **Memory Integration**: **No changes needed** - memory system can use `VectorStore` interface directly.
 
@@ -1049,7 +1050,7 @@ class ToolRegistry:
         pass
 ```
 
-**65+ Tools Registered**:
+**Tools in registry (examples, not exhaustive)**:
 - **Web Search**: ChunkedSearchTool, WebSearchTool
 - **Bioinformatics**: GOAnnotationTool, PubMedRetrievalTool, 18 MCP servers
 - **DeepSearch**: QueryRewriterTool, URLVisitTool, ReflectionTool
@@ -1674,48 +1675,15 @@ graph TB
 
 ## Appendix: File Inventory
 
-### Core Architecture Files
-
-**State & Workflow** (5 files):
-- `DeepResearch/app.py` (1120 lines) - Main orchestrator
-- `DeepResearch/agents.py` (1324 lines) - Agent classes
-- `DeepResearch/src/statemachines/rag_workflow.py` (400+ lines)
-- `DeepResearch/src/statemachines/bioinformatics_workflow.py` (400+ lines)
-- `DeepResearch/src/statemachines/code_execution_workflow.py` (500+ lines)
-
-**Datatypes** (48 files):
-- `workflow_orchestration.py` (800+ lines)
-- `deep_agent_state.py` (300+ lines)
-- `rag.py` (800+ lines)
-- `agents.py` (100 lines)
-- `neo4j_types.py` (100+ lines)
-- Plus 43 other datatype files
-
-**Agents** (22 files):
-- `agent_orchestrator.py` (400+ lines)
-- `workflow_orchestrator.py` (500+ lines)
-- `multi_agent_coordinator.py` (1000+ lines)
-- Plus 19 specialized agent files
-
-**Tools** (50+ tools):
-- `tools/base.py` - Base classes
-- `tools/bioinformatics/` - 18 MCP servers
-- `tools/websearch_tools.py`, `tools/deepsearch_tools.py`
-- `tools/integrated_search_tools.py`
-
-**Vector Stores** (2 implementations):
-- `vector_stores/neo4j_vector_store.py`
-- `vector_stores/faiss_vector_store.py`
-
-**Utils** (41 files):
-- `utils/execution_history.py`
-- `utils/execution_status.py`
-- Plus 39 other utility files
-
-**Configuration** (100+ files):
-- `configs/config.yaml` (main entry)
-- `configs/memory/` (to be created)
-- Plus subdirectories for all components
+### Core architecture touchpoints (not exhaustive)
+- **State & workflows**: `DeepResearch/app.py` (graph, ResearchState, node routing); statemachines under `DeepResearch/src/statemachines/` (prime/bioinformatics/rag/deepsearch/code_execution, etc.).
+- **Agents**: `DeepResearch/agents.py` and `DeepResearch/src/agents/` (planner, parser, executor, bioinformatics, deepsearch, orchestrators, deep_agent variants).
+- **Datatypes**: `DeepResearch/src/datatypes/` (agents.py deps/result/history, execution.py, rag.py Document/VectorStoreType, deep_agent_state.py, workflow_orchestration.py, pydantic_ai_tools.py, neo4j_types.py, etc.).
+- **Tools**: `DeepResearch/src/tools/base.py` plus registries; bioinformatics MCP servers under `DeepResearch/src/tools/bioinformatics/`; web/deepsearch/integrated search tools nearby.
+- **Vector stores**: Implemented in `DeepResearch/src/vector_stores/neo4j_vector_store.py` and `faiss_vector_store.py` (others referenced in docs/configs).
+- **Execution tracking**: `DeepResearch/src/utils/execution_history.py`; tool registry variant at `DeepResearch/src/utils/tool_registry.py`.
+- **Pydantic AI utils**: `DeepResearch/src/utils/pydantic_ai_utils.py` (agent/toolset builders).
+- **Configuration**: `configs/config.yaml` entrypoint; flow configs under `configs/statemachines/flows/`; no `configs/memory/` yet.
 
 ---
 
