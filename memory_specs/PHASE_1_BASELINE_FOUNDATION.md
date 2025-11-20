@@ -325,7 +325,7 @@ class PlanNode(BaseNode[ResearchState]):
 
 ### BaseAgent Pattern
 
-**Location**: `DeepResearch/agents.py:47-110`
+**Location**: `DeepResearch/agents.py`
 
 ```python
 class BaseAgent(ABC):
@@ -338,17 +338,22 @@ class BaseAgent(ABC):
         instructions: str | None = None,
     ):
         self.agent_type = agent_type
+        self.model_name = model_name
+        self.dependencies = dependencies or AgentDependencies()
         self._agent: Agent[AgentDependencies, str] | None = None
         self._initialize_agent(system_prompt, instructions)
 
     def _initialize_agent(self, system_prompt: str | None, instructions: str | None):
-        self._agent = Agent[AgentDependencies, str](
-            self.model_name,
-            deps_type=AgentDependencies,
-            system_prompt=system_prompt or self._get_default_system_prompt(),
-            instructions=instructions or self._get_default_instructions(),
-        )
-        self._register_tools()
+        try:
+            self._agent = Agent[AgentDependencies, str](
+                self.model_name,
+                deps_type=AgentDependencies,
+                system_prompt=system_prompt or self._get_default_system_prompt(),
+                instructions=instructions or self._get_default_instructions(),
+            )
+            self._register_tools()
+        except Exception:
+            self._agent = None
 
     @abstractmethod
     def _register_tools(self):
@@ -410,7 +415,7 @@ class AgentDependencies:
 8. **EvaluatorAgent** - Result evaluation
 9. **DeepAgentVariants** (5 types): Basic, Enhanced, Comprehensive, Experimental, Production
 
-**Memory Needs Per Agent Type**:
+**Memory Needs Per Agent Type (illustrative/inferred)**:
 
 | Agent Type | Memory Priorities | Top-K | Retrieval Strategy |
 |------------|------------------|-------|-------------------|
@@ -424,7 +429,7 @@ class AgentDependencies:
 
 ### Tool Registration Pattern
 
-**Location**: `DeepResearch/agents.py:149-169`
+**Location**: `DeepResearch/agents.py` (per-agent overrides)
 
 ```python
 @abstractmethod
@@ -571,7 +576,7 @@ stateDiagram-v2
 
 ### Nested Loop & Subgraph Spawning
 
-**Location**: `DeepResearch/src/agents/agent_orchestrator.py:37-150`
+**Location**: `DeepResearch/src/agents/agent_orchestrator.py`
 
 ```python
 @dataclass
@@ -643,7 +648,7 @@ configs/
 
 ### Main Configuration File
 
-**Location**: `configs/config.yaml:1-118`
+**Location**: `configs/config.yaml` (excerpt of key defaults)
 
 ```yaml
 defaults:
