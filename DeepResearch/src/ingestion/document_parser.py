@@ -1,11 +1,14 @@
 """Document parsing."""
 
 import ast
+import logging
 import re
 from pathlib import Path
 from typing import Any
 
 from DeepResearch.src.datatypes.rag import Document
+
+logger = logging.getLogger(__name__)
 
 
 class DocumentParser:
@@ -24,7 +27,7 @@ class PythonParser(DocumentParser):
             with open(file_path, encoding="utf-8") as f:
                 source = f.read()
         except Exception as e:
-            print(f"Error reading {file_path}: {e}")
+            logger.error(f"Error reading Python file {file_path}: {e}")
             return []
 
         try:
@@ -60,9 +63,6 @@ class PythonParser(DocumentParser):
                         )
                     )
 
-        if not documents and source.strip():
-            pass
-
         return documents
 
 
@@ -75,7 +75,7 @@ class MarkdownParser(DocumentParser):
             with open(file_path, encoding="utf-8") as f:
                 content = f.read()
         except Exception as e:
-            print(f"Error reading {file_path}: {e}")
+            logger.error(f"Error reading Markdown file {file_path}: {e}")
             return []
 
         sections = self._split_by_headers(content)
@@ -139,7 +139,7 @@ class PlainTextParser(DocumentParser):
                 )
             ]
         except Exception as e:
-            print(f"Error reading {file_path}: {e}")
+            logger.error(f"Error reading text file {file_path}: {e}")
             return []
 
 

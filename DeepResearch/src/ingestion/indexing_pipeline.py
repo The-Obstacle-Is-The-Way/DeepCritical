@@ -1,12 +1,15 @@
 """Indexing pipeline orchestrator."""
 
 import asyncio
+import logging
 import threading
 from queue import Empty, Queue
 from typing import Any
 
 from DeepResearch.src.datatypes.rag import Document, Embeddings, VectorStore
 from DeepResearch.src.ingestion.document_parser import ParserFactory
+
+logger = logging.getLogger(__name__)
 
 
 class IndexingPipeline:
@@ -72,10 +75,10 @@ class IndexingPipeline:
                     self._index_batch(batch)
                     batch = []
             except Empty:
-                # Queue empty, verify if we still run or if we have remaining batch
+                # Queue empty, continue
                 continue
             except Exception as e:
-                print(f"Error indexing: {e}")
+                logger.error(f"Error indexing file: {e}")
 
         # Process remaining
         if batch:

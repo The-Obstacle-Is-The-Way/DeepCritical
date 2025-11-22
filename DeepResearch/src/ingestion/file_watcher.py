@@ -1,6 +1,7 @@
 """File watcher for automatic code indexing."""
 
 import asyncio
+import logging
 
 from watchdog.events import (
     FileCreatedEvent,
@@ -13,6 +14,8 @@ from watchdog.observers import Observer
 
 from DeepResearch.src.ingestion.file_filter import FileFilter
 from DeepResearch.src.ingestion.indexing_pipeline import IndexingPipeline
+
+logger = logging.getLogger(__name__)
 
 
 class FileWatcher:
@@ -71,4 +74,4 @@ class CodebaseEventHandler(FileSystemEventHandler):
                 src_path = str(event.src_path)
                 asyncio.run(self.pipeline.remove_file(src_path))
             except Exception as e:
-                print(f"Error removing file {event.src_path}: {e}")
+                logger.error(f"Error removing file {event.src_path}: {e}")
