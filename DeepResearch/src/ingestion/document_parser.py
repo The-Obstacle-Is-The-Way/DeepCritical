@@ -1,5 +1,6 @@
 """Document parsing."""
 import ast
+import re
 from pathlib import Path
 from typing import Any
 from DeepResearch.src.datatypes.rag import Document
@@ -57,14 +58,62 @@ class PythonParser(DocumentParser):
                         )
                     )
 
-        # If no semantic units found but file has content, index as module
         if not documents and source.strip():
-             # Could index whole file as module
-             # But for now, let's return empty list or whole file?
-             # Plan implies chunking. If no functions/classes, maybe just file?
              pass
              
         return documents
+
+
+class MarkdownParser(DocumentParser):
+    """Parse Markdown files by sections (headers)."""
+
+    def parse(self, file_path: str) -> list[Document]:
+        """Parse markdown file into sections."""
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                content = f.read()
+        except Exception as e:
+            print(f"Error reading {file_path}: {e}")
+            return []
+
+        sections = self._split_by_headers(content)
+        documents = []
+
+        for i, section in enumerate(sections):
+            doc_id = f"{file_path}::section{i}"
+            documents.append(
+                Document(
+                    id=doc_id,
+                    content=section,
+                    metadata={
+                        "file_path": file_path,
+                        "type": "markdown_section",
+                        "section_index": i,
+                    },
+                )
+            )
+
+        return documents
+
+    @staticmethod
+    def _split_by_headers(text: str) -> list[str]:
+        """Split markdown by headers (##, ###, etc.)."""
+        sections = []
+        current_section = []
+
+        for line in text.split("\n"):
+            if re.match(r"^#{1,6} ", line):  # Header line
+                if current_section:
+                    sections.append("\n".join(current_section))
+                current_section = [line]
+            else:
+                current_section.append(line)
+
+        if current_section:
+            sections.append("\n".join(current_section))
+            
+        # Filter empty sections
+        return [s for s in sections if s.strip()]
 
 
 class PlainTextParser(DocumentParser):
@@ -102,6 +151,8 @@ class ParserFactory:
 
         if ext == ".py":
             return PythonParser()
+        elif ext == ".md":
+            return MarkdownParser()
         else:
             return PlainTextParser()
 

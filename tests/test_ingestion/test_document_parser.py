@@ -73,3 +73,37 @@ def test_factory_selects_python_parser(tmp_path):
     py_file = tmp_path / "test.py"
     parser = ParserFactory.get_parser(str(py_file))
     assert isinstance(parser, PythonParser)
+
+def test_markdown_parser_splits_by_headers(tmp_path):
+    """Test that MarkdownParser splits by section headers."""
+    md_file = tmp_path / "test.md"
+    md_file.write_text('''
+# Introduction
+This is the intro.
+
+## Section 1
+Content for section 1.
+
+## Section 2
+Content for section 2.
+''')
+
+    from DeepResearch.src.ingestion.document_parser import MarkdownParser
+
+    parser = MarkdownParser()
+    documents = parser.parse(str(md_file))
+
+    assert len(documents) == 3
+    assert '# Introduction' in documents[0].content
+    assert '## Section 1' in documents[1].content
+    assert '## Section 2' in documents[2].content
+    assert documents[0].metadata['type'] == 'markdown_section'
+    assert documents[1].metadata['section_index'] == 1
+
+def test_factory_selects_markdown_parser(tmp_path):
+    """Test that factory returns MarkdownParser for .md files."""
+    md_file = tmp_path / "test.md"
+    
+    from DeepResearch.src.ingestion.document_parser import MarkdownParser
+    parser = ParserFactory.get_parser(str(md_file))
+    assert isinstance(parser, MarkdownParser)
