@@ -90,10 +90,7 @@ async def test_file_watcher_detects_deletion(
     tmp_path, vector_store_fixture, embeddings_fixture
 ):
     """Test that FileWatcher detects file deletions."""
-    # Setup
-    test_file = tmp_path / "test.txt"
-    test_file.write_text("Content to delete")
-
+    # Setup pipeline and watcher FIRST
     file_filter = FileFilter(allowed_extensions=[".txt"])
     pipeline = IndexingPipeline(
         embeddings=embeddings_fixture, vector_store=vector_store_fixture, batch_size=1
@@ -105,7 +102,11 @@ async def test_file_watcher_detects_deletion(
     )
     watcher.start()
 
-    # Ensure initial indexing
+    # NOW create the file (watcher will see the creation event)
+    test_file = tmp_path / "test.txt"
+    test_file.write_text("Content to delete")
+
+    # Wait for indexing
     time.sleep(2)
     from DeepResearch.src.datatypes.rag import SearchType
 
