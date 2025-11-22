@@ -41,3 +41,22 @@ def test_binary_file_detection(tmp_path):
 
     assert not file_filter.should_index(str(binary_file))
     assert file_filter.should_index(str(text_file))
+
+
+def test_mgrepignore_filtering(tmp_path):
+    """Test that .mgrepignore patterns are respected."""
+    mgrepignore = tmp_path / ".mgrepignore"
+    mgrepignore.write_text("*.log\ntemp/\n")
+
+    # Create test files
+    (tmp_path / "debug.log").write_text("log")
+    (tmp_path / "temp").mkdir()
+    (tmp_path / "temp/data.txt").write_text("data")
+    (tmp_path / "src").mkdir(exist_ok=True)
+    (tmp_path / "src/main.py").write_text("code")
+
+    file_filter = FileFilter(mgrepignore_path=str(mgrepignore))
+
+    assert not file_filter.should_index(str(tmp_path / "debug.log"))
+    assert not file_filter.should_index(str(tmp_path / "temp/data.txt"))
+    assert file_filter.should_index(str(tmp_path / "src/main.py"))

@@ -1,6 +1,5 @@
 """File watcher for automatic code indexing."""
 
-import asyncio
 import logging
 
 from watchdog.events import (
@@ -72,6 +71,6 @@ class CodebaseEventHandler(FileSystemEventHandler):
         if not event.is_directory:
             try:
                 src_path = str(event.src_path)
-                asyncio.run(self.pipeline.remove_file(src_path))
+                self.pipeline.enqueue_deletion(src_path)
             except Exception as e:
                 logger.error(f"Error removing file {event.src_path}: {e}")

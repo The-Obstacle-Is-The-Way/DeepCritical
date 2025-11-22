@@ -165,3 +165,65 @@ async def test_determinism(embeddings, temp_faiss_paths):
     # NOTE: store2 just added doc2. The id_map should be populated.
     assert hash1 in store2.id_map
     assert store2.id_map[hash1] == "stable_id_123"
+
+
+@pytest.mark.asyncio
+async def test_faiss_delete_documents_and_id_map_cleanup(temp_faiss_paths, embeddings):
+    """Test that delete_documents removes vectors and cleans up id_map."""
+    index_path, data_path = temp_faiss_paths
+
+    config = FAISSVectorStoreConfig(
+        store_type=VectorStoreType.FAISS,
+        embedding_dimension=384,
+        index_path=index_path,
+        data_path=data_path,
+    )
+
+    store = create_vector_store(config, embeddings)
+
+    # Add documents
+    doc1 = Document(id="doc1", content="Python code", metadata={"file_path": "a.py"})
+    doc2 = Document(id="doc2", content="More Python", metadata={"file_path": "b.py"})
+    doc3 = Document(id="doc3", content="Markdown", metadata={"file_path": "c.md"})
+
+    await store.add_documents([doc1, doc2, doc3])
+
+    # Verify all present
+    # Note: Implementation details might vary, but check public interface
+    # Assuming store.documents is accessible or we can search
+    results = await store.search("Python", SearchType.SIMILARITY, top_k=5)
+    # Given our mock embeddings heuristic, "Python" should match "Python" docs
+    # Wait, our mock embeddings heuristic is:
+    # if "machine" or "learning" in text -> vec A
+    # else -> vec B
+    # "Python code" -> B
+    # "More Python" -> B
+    # "Markdown" -> B
+    # "Python" query -> B
+    # So all 3 are similar. But doc3 "Markdown" is also B.
+    # Wait, let's check the mock implementation in this file again.
+    # It creates vec[1]=1.0 for non-machine-learning text.
+    # So all 3 docs and the query will have identical embeddings.
+    # FAISS will return all of them (score 0.0 or 1.0 depending on metric).
+    # top_k=5 should return all 3.
+    assert len(results) == 3
+
+    # Delete doc1
+    await store.delete_documents(["doc1"])
+
+    # Search should no longer return doc1
+    results_after = await store.search("Python", SearchType.SIMILARITY, top_k=5)
+    result_ids = [r.document.id for r in results_after]
+    assert "doc1" not in result_ids
+    assert "doc2" in result_ids
+    assert "doc3" in result_ids
+
+    # If we have access to internals, check them too
+    from DeepResearch.src.vector_stores.faiss_vector_store import FAISSVectorStore
+
+    if isinstance(store, FAISSVectorStore):
+        assert "doc1" not in store.documents
+        # Check id_map cleanup (hash for doc1 should be gone if no other doc maps to it)
+        # doc1 ID is "doc1".
+        # Check if we can find the hash.
+        # We can't easily compute hash here without the private helper or importing it

@@ -3,6 +3,9 @@
 import asyncio
 import logging
 import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from queue import Empty, Queue
 from typing import Any
 
@@ -21,9 +24,22 @@ class IndexingPipeline:
         self.embeddings = embeddings
         self.vector_store = vector_store
         self.batch_size = batch_size
-        self.queue: Queue[str] = Queue()
+        # Queue holds paths to index (str) or paths to delete (tuple("DELETE", path))
+        self.queue: Queue[str | tuple[str, str]] = Queue()
         self.running = False
         self.worker_thread: threading.Thread | None = None
+
+        # Threading and async management
+        self._loop: asyncio.AbstractEventLoop | None = None
+        self._executor = ThreadPoolExecutor(
+            max_workers=1, thread_name_prefix="indexing"
+        )
+
+        # Stats
+        self.indexed_files: set[str] = set()
+        self.last_index_time: datetime | None = None
+        self._total_documents_indexed: int = 0
+        self._total_batches_processed: int = 0
 
     def start(self) -> None:
         """Start background worker."""
@@ -36,17 +52,21 @@ class IndexingPipeline:
         self.running = False
         if self.worker_thread:
             self.worker_thread.join(timeout=5)
+        self._executor.shutdown(wait=True)
 
     def enqueue_file(self, file_path: str) -> None:
         """Add file to indexing queue."""
         self.queue.put(file_path)
 
-    async def remove_file(self, file_path: str) -> None:
-        """Remove file from index (deleted file)."""
+    def enqueue_deletion(self, file_path: str) -> None:
+        """Add file deletion to queue."""
+        self.queue.put(("DELETE", file_path))
+
+    async def _remove_file_internal(self, file_path: str) -> None:
+        """Remove file from index (internal async)."""
         # Find all document IDs for this file
-        # Note: This assumes vector_store has a 'documents' dict which FAISSVectorStore does
         if hasattr(self.vector_store, "documents"):
-            # Cast for type safety if needed, but python runtime is duck typed
+            # Cast for type safety if needed
             from typing import cast
 
             docs_dict = cast("dict[str, Document]", self.vector_store.documents)
@@ -58,44 +78,102 @@ class IndexingPipeline:
             if doc_ids:
                 await self.vector_store.delete_documents(doc_ids)
 
+                # Remove from stats if present
+                if file_path in self.indexed_files:
+                    self.indexed_files.remove(file_path)
+
+                logger.info(f"Removed file {file_path} and {len(doc_ids)} chunks")
+
     def _process_queue(self) -> None:
         """Background worker that processes indexing queue."""
-        import time
+        # Create event loop for this thread
+        self._loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self._loop)
 
         batch: list[Document] = []
         last_flush_time = time.time()
         flush_interval = 2.0  # Seconds
 
-        while self.running:
-            try:
-                # Wait for 1 second, then check if running again
+        try:
+            while self.running:
                 try:
-                    file_path = self.queue.get(timeout=1)
-                    parser = ParserFactory.get_parser(file_path)
-                    documents = parser.parse(file_path)
-                    batch.extend(documents)
-                except Empty:
-                    pass
+                    # Wait for 1 second, then check if running again
+                    try:
+                        item = self.queue.get(timeout=1)
 
-                current_time = time.time()
-                is_full_batch = len(batch) >= self.batch_size
-                is_time_to_flush = (
-                    batch and (current_time - last_flush_time) >= flush_interval
-                )
+                        if isinstance(item, tuple) and item[0] == "DELETE":
+                            # Handle deletion immediately (high priority, no batching)
+                            # Flush current batch first to maintain order consistency
+                            if batch:
+                                self._loop.run_until_complete(self._index_batch(batch))
+                                batch = []
+                                last_flush_time = time.time()
 
-                if is_full_batch or is_time_to_flush:
-                    self._index_batch(batch)
-                    batch = []
-                    last_flush_time = time.time()
+                            self._loop.run_until_complete(
+                                self._remove_file_internal(item[1])
+                            )
 
-            except Exception as e:
-                logger.error(f"Error indexing file: {e}")
+                        else:
+                            # Handle indexing
+                            file_path = str(item)
+                            parser = ParserFactory.get_parser(file_path)
+                            documents = parser.parse(file_path)
+                            batch.extend(documents)
 
-        # Process remaining
-        if batch:
-            self._index_batch(batch)
+                    except Empty:
+                        pass
 
-    def _index_batch(self, documents: list[Document]) -> None:
+                    current_time = time.time()
+                    is_full_batch = len(batch) >= self.batch_size
+                    is_time_to_flush = (
+                        batch and (current_time - last_flush_time) >= flush_interval
+                    )
+
+                    if is_full_batch or is_time_to_flush:
+                        self._loop.run_until_complete(self._index_batch(batch))
+                        batch = []
+                        last_flush_time = time.time()
+
+                except Exception as e:
+                    logger.error(f"Error processing queue item: {e}")
+
+            # Process remaining
+            if batch:
+                self._loop.run_until_complete(self._index_batch(batch))
+        finally:
+            self._loop.close()
+
+    async def _index_batch(self, documents: list[Document]) -> None:
         """Embed and index a batch of documents."""
-        # Run async method in a new event loop since we are in a thread
-        asyncio.run(self.vector_store.add_documents(documents))
+        if not documents:
+            return
+        try:
+            await self.vector_store.add_documents(documents)
+
+            # Update stats
+            self._total_documents_indexed += len(documents)
+            self._total_batches_processed += 1
+            self.last_index_time = datetime.now()
+
+            # Track indexed files
+            for doc in documents:
+                if file_path := doc.metadata.get("file_path"):
+                    self.indexed_files.add(file_path)
+
+            logger.info(f"Indexed batch of {len(documents)} documents")
+        except Exception as e:
+            logger.error(f"Error indexing batch: {e}")
+
+    def get_stats(self) -> dict[str, Any]:
+        """Get indexing statistics."""
+        return {
+            "indexed_files": sorted(self.indexed_files),
+            "total_files": len(self.indexed_files),
+            "total_documents": self._total_documents_indexed,
+            "total_batches": self._total_batches_processed,
+            "last_index_time": (
+                self.last_index_time.isoformat() if self.last_index_time else None
+            ),
+            "queue_depth": self.queue.qsize(),
+            "running": self.running,
+        }

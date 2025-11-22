@@ -118,7 +118,16 @@ async def test_indexing_pipeline_remove_file(
     assert len(await vector_store_fixture.search("Keep me", SearchType.SIMILARITY)) > 0
 
     # Remove file
-    await pipeline.remove_file(file_path)
+    pipeline.enqueue_deletion(file_path)
+
+    # Process queue (since we didn't start the thread, we need to manually process or simulate)
+    # But wait, this test was "test_indexing_pipeline_remove_file".
+    # It originally called `await pipeline.remove_file`.
+    # Now `enqueue_deletion` is sync and puts into queue.
+    # We need the pipeline running to process it.
+    pipeline.start()
+    time.sleep(1)  # Wait for worker to pick it up
+    pipeline.stop()
 
     # Verify removal
     # Note: Dummy vector store might need specific behavior check
@@ -135,3 +144,40 @@ async def test_indexing_pipeline_remove_file(
     results_kept = await vector_store_fixture.search("Keep me", SearchType.SIMILARITY)
     assert len(results_kept) > 0
     assert "Keep me" in results_kept[0].document.content
+
+
+@pytest.mark.asyncio
+async def test_indexing_pipeline_stats(
+    tmp_path, vector_store_fixture, embeddings_fixture
+):
+    """Test that pipeline tracks stats correctly."""
+    pipeline = IndexingPipeline(
+        embeddings=embeddings_fixture,
+        vector_store=vector_store_fixture,
+        batch_size=2,
+    )
+    pipeline.start()
+
+    # Enqueue files
+    for i in range(3):
+        file_path = tmp_path / f"file{i}.txt"
+        file_path.write_text(f"Content {i}")
+        pipeline.enqueue_file(str(file_path))
+
+    # Wait for processing
+    time.sleep(2.1)  # Slightly more than flush interval
+
+    stats = pipeline.get_stats()
+    # We expect at least the first batch (2 files) to be done.
+    # The second batch might depend on timing.
+    assert stats["total_files"] >= 2
+
+    # To be safe, we stop the pipeline to force flush
+    pipeline.stop()
+
+    stats = pipeline.get_stats()
+    assert stats["total_files"] == 3
+    assert stats["total_documents"] >= 3
+    assert stats["total_batches"] >= 2  # 3 docs / batch_size 2 = 2 batches (2 + 1)
+    assert stats["last_index_time"] is not None
+    assert not stats["running"]

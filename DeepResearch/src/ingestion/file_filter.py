@@ -14,10 +14,12 @@ class FileFilter:
     def __init__(
         self,
         gitignore_path: str | None = None,
+        mgrepignore_path: str | None = None,
         allowed_extensions: list[str] | None = None,
     ):
         self.allowed_extensions = allowed_extensions or [".txt", ".py", ".md"]
 
+        # Parse .gitignore
         if gitignore_path:
             path = Path(gitignore_path)
             if path.exists():
@@ -30,14 +32,32 @@ class FileFilter:
         else:
             self.gitignore_matcher = lambda x: False
 
+        # Parse .mgrepignore
+        if mgrepignore_path:
+            path = Path(mgrepignore_path)
+            if path.exists():
+                self.mgrepignore_matcher = parse_gitignore(mgrepignore_path)
+            else:
+                logger.warning(
+                    f"Mgrepignore file not found at {mgrepignore_path}, patterns will be ignored."
+                )
+                self.mgrepignore_matcher = lambda x: False
+        else:
+            self.mgrepignore_matcher = lambda x: False
+
     def should_index(self, file_path: str) -> bool:
         """Check if file should be indexed."""
+        path = Path(file_path)
         # Check gitignore
         if self.gitignore_matcher(file_path):
             return False
 
+        # Check mgrepignore
+        if self.mgrepignore_matcher(file_path):
+            return False
+
         # Check extension
-        ext = Path(file_path).suffix
+        ext = path.suffix
         if ext not in self.allowed_extensions:
             return False
 

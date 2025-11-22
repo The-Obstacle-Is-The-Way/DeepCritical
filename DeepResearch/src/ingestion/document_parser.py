@@ -44,23 +44,37 @@ class PythonParser(DocumentParser):
 
         documents = []
 
+        # Collect relevant nodes first
+        nodes = []
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
-                # Extract source for this node
-                if chunk := ast.get_source_segment(source, node):
-                    doc_id = f"{file_path}::{node.name}::{node.lineno}"
-                    documents.append(
-                        Document(
-                            id=doc_id,
-                            content=chunk,
-                            metadata={
-                                "file_path": file_path,
-                                "type": node.__class__.__name__,
-                                "name": node.name,
-                                "line": node.lineno,
-                            },
-                        )
+                nodes.append(node)
+
+        # Sort by line number to ensure deterministic order
+        nodes.sort(key=lambda x: x.lineno)
+
+        for node in nodes:
+            # Extract source for this node
+            if chunk := ast.get_source_segment(source, node):
+                start_line = node.lineno
+                end_line = node.end_lineno or start_line
+
+                doc_id = f"{file_path}::{node.name}::{start_line}"
+                documents.append(
+                    Document(
+                        id=doc_id,
+                        content=chunk,
+                        metadata={
+                            "file_path": file_path,
+                            "type": node.__class__.__name__,
+                            "name": node.name,
+                            "line": node.lineno,
+                            "line_range": (start_line, end_line),
+                            "start_line": start_line,
+                            "end_line": end_line,
+                        },
                     )
+                )
 
         return documents
 

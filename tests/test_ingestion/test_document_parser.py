@@ -23,10 +23,15 @@ def bar():
     documents = parser.parse(str(py_file))
 
     assert len(documents) == 2
-    assert documents[0].metadata["name"] == "foo"
-    assert documents[1].metadata["name"] == "bar"
-    assert "return 42" in documents[0].content
-    assert "return 100" in documents[1].content
+    docs_by_name = {d.metadata["name"]: d for d in documents}
+    assert "foo" in docs_by_name
+    assert "bar" in docs_by_name
+    assert "return 42" in docs_by_name["foo"].content
+    assert "return 100" in docs_by_name["bar"].content
+
+    # Check line ranges
+    assert docs_by_name["foo"].metadata["line_range"] == (2, 4)
+    assert docs_by_name["bar"].metadata["line_range"] == (6, 8)
 
 
 def test_python_parser_extracts_classes(tmp_path):
