@@ -33,6 +33,7 @@ dependencies = [
     "hydra-core>=1.3.2",
     "limits>=3.0.0",
     "trafilatura>=2.0.0",
+    "psutil>=5.9.0",
 ]
 
 [project.optional-dependencies]
