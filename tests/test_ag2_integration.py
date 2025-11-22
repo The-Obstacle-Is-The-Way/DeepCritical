@@ -28,6 +28,20 @@ class TestAG2Integration:
     @pytest.mark.optional
     async def test_python_code_execution(self):
         """Test Python code execution with retry logic."""
+        # Check if Docker is available
+        import shutil
+
+        if not shutil.which("docker"):
+            pytest.skip("Docker not available")
+
+        try:
+            import docker
+
+            client = docker.from_env()
+            client.ping()
+        except Exception:
+            pytest.skip("Docker daemon not running")
+
         tool = PydanticAICodeExecutionTool(max_retries=3, timeout=30, use_docker=True)
 
         # Test successful execution
@@ -38,7 +52,13 @@ y = x * 2
 print(f"Result: {y}")
 """
 
-        result = await tool.execute_python_code(code)
+        try:
+            result = await tool.execute_python_code(code)
+        except Exception as e:
+            if "No such file or directory" in str(e) or "Connection aborted" in str(e):
+                pytest.skip(f"Docker connection failed: {e}")
+            raise
+
         assert result["success"] is True
         assert "Hello from DeepCritical!" in result["output"]
         assert result["exit_code"] == 0
@@ -198,6 +218,20 @@ pwd
     @pytest.mark.asyncio
     async def test_agent_workflow_simulation(self):
         """Test simulated agent workflow."""
+        # Check if Docker is available (since tool defaults might use it)
+        import shutil
+
+        if not shutil.which("docker"):
+            pytest.skip("Docker not available")
+
+        try:
+            import docker
+
+            client = docker.from_env()
+            client.ping()
+        except Exception:
+            pytest.skip("Docker daemon not running")
+
         # Simulate agent workflow for factorial calculation
         initial_code = """
 def factorial(n):
@@ -211,7 +245,12 @@ print(f"Factorial of 5: {factorial(5)}")
 """
 
         tool = PydanticAICodeExecutionTool(max_retries=3)
-        result = await tool.execute_python_code(initial_code)
+        try:
+            result = await tool.execute_python_code(initial_code)
+        except Exception as e:
+            if "No such file or directory" in str(e) or "Connection aborted" in str(e):
+                pytest.skip(f"Docker connection failed: {e}")
+            raise
 
         # The code should execute successfully
         assert result["success"] is True

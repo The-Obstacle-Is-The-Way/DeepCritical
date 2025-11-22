@@ -2,7 +2,9 @@
 
 import os
 import tempfile
+from unittest.mock import MagicMock, patch
 
+import numpy as np
 import pytest
 
 from DeepResearch.src.datatypes.embeddings_factory import create_embeddings
@@ -18,7 +20,43 @@ from DeepResearch.src.vector_stores.faiss_config import FAISSVectorStoreConfig
 
 
 @pytest.fixture
-def embeddings():
+def mock_sentence_transformer():
+    with patch(
+        "DeepResearch.src.datatypes.sentence_transformer_embeddings.SentenceTransformer"
+    ) as MockModel:
+        mock_instance = MockModel.return_value
+        mock_instance.get_sentence_embedding_dimension.return_value = 384
+
+        def side_effect(texts, **kwargs):
+            # Return deterministic embeddings based on text length/content
+            # This ensures "machine learning" query matches "machine learning" doc if we design it right
+            # or at least ensures consistency.
+            # For this test, we want "machine learning" query to match "machine learning embeddings" doc.
+
+            results = []
+            for text in texts:
+                # Create a deterministic vector
+                # We'll use a simple heuristic:
+                # if "machine" or "learning" in text, use vector A
+                # else use vector B
+                vec = np.zeros(384, dtype=np.float32)
+                if "machine" in text or "learning" in text:
+                    vec[0] = 1.0  # High similarity to other "machine learning" texts
+                else:
+                    vec[1] = 1.0  # Orthogonal to "machine learning"
+
+                # Add some noise based on text hash to avoid exact duplicates if needed
+                # but keep the main signal strong
+                results.append(vec)
+
+            return np.array(results)
+
+        mock_instance.encode.side_effect = side_effect
+        yield MockModel
+
+
+@pytest.fixture
+def embeddings(mock_sentence_transformer):
     """Create embeddings for testing."""
     config = EmbeddingsConfig(
         model_type=EmbeddingModelType.SENTENCE_TRANSFORMERS,

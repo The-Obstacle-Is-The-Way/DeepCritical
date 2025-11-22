@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock, patch
+
 import numpy as np
 import pytest
 
@@ -5,6 +7,23 @@ from DeepResearch.src.datatypes.rag import EmbeddingModelType, EmbeddingsConfig
 from DeepResearch.src.datatypes.sentence_transformer_embeddings import (
     SentenceTransformerEmbeddings,
 )
+
+
+@pytest.fixture
+def mock_sentence_transformer():
+    with patch(
+        "DeepResearch.src.datatypes.sentence_transformer_embeddings.SentenceTransformer"
+    ) as MockModel:
+        mock_instance = MockModel.return_value
+        mock_instance.get_sentence_embedding_dimension.return_value = 384
+
+        def side_effect(texts, **kwargs):
+            # Return dummy embeddings
+            rng = np.random.default_rng()
+            return rng.random((len(texts), 384)).astype(np.float32)
+
+        mock_instance.encode.side_effect = side_effect
+        yield MockModel
 
 
 @pytest.fixture
@@ -19,7 +38,7 @@ def config():
 
 
 @pytest.fixture
-def embeddings(config):
+def embeddings(config, mock_sentence_transformer):
     return SentenceTransformerEmbeddings(config)
 
 
@@ -54,7 +73,7 @@ def test_sync_methods(embeddings):
 
 
 @pytest.mark.asyncio
-async def test_query_instruction():
+async def test_query_instruction(mock_sentence_transformer):
     """Test that query instruction doesn't break execution."""
     config = EmbeddingsConfig(
         model_type=EmbeddingModelType.SENTENCE_TRANSFORMERS,
@@ -63,10 +82,20 @@ async def test_query_instruction():
         query_instruction="Represent: ",
     )
     emb = SentenceTransformerEmbeddings(config)
-    # We can't easily verify the instruction was used without mocking the model
-    # But we can verify it runs without error
+
+    # We can verification the instruction was used by checking the mock
     vector = await emb.vectorize_query("test")
     assert len(vector) == 384
+
+    # Verify the mock was called with the prepended instruction
+    mock_instance = mock_sentence_transformer.return_value
+    mock_instance.encode.assert_called_with(
+        ["Represent: test"],
+        batch_size=32,
+        show_progress_bar=False,
+        convert_to_numpy=True,
+        normalize_embeddings=True,
+    )
 
 
 @pytest.mark.asyncio
