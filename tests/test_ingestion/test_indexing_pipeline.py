@@ -82,3 +82,56 @@ async def test_indexing_pipeline_batch_processing(
             f"Document {i}", SearchType.SIMILARITY, top_k=1
         )
         assert len(results) > 0
+
+
+@pytest.mark.asyncio
+async def test_indexing_pipeline_remove_file(
+    tmp_path, vector_store_fixture, embeddings_fixture
+):
+    """Test that IndexingPipeline can remove files from the index."""
+    # Setup pipeline
+    pipeline = IndexingPipeline(
+        embeddings=embeddings_fixture, vector_store=vector_store_fixture, batch_size=1
+    )
+    # Don't need to start the thread for this test, we call remove_file directly (which is async)
+
+    # Manually add documents to vector store to simulate indexed file
+    from DeepResearch.src.datatypes.rag import Document
+
+    file_path = str(tmp_path / "delete_me.txt")
+    doc1 = Document(
+        id="doc1", content="Chunk 1", metadata={"file_path": file_path, "type": "text"}
+    )
+    doc2 = Document(
+        id="doc2", content="Chunk 2", metadata={"file_path": file_path, "type": "text"}
+    )
+    doc3 = Document(
+        id="doc3",
+        content="Keep me",
+        metadata={"file_path": "other.txt", "type": "text"},
+    )
+
+    await vector_store_fixture.add_documents([doc1, doc2, doc3])
+
+    # Verify presence
+    assert len(await vector_store_fixture.search("Chunk 1", SearchType.SIMILARITY)) > 0
+    assert len(await vector_store_fixture.search("Keep me", SearchType.SIMILARITY)) > 0
+
+    # Remove file
+    await pipeline.remove_file(file_path)
+
+    # Verify removal
+    # Note: Dummy vector store might need specific behavior check
+    # But assuming FAISS/fixture works:
+    results_deleted = await vector_store_fixture.search(
+        "Chunk 1", SearchType.SIMILARITY
+    )
+    # Check that doc1 and doc2 are NOT in results
+    found_ids = [r.document.id for r in results_deleted]
+    assert "doc1" not in found_ids
+    assert "doc2" not in found_ids
+
+    # Verify other file remains
+    results_kept = await vector_store_fixture.search("Keep me", SearchType.SIMILARITY)
+    assert len(results_kept) > 0
+    assert "Keep me" in results_kept[0].document.content

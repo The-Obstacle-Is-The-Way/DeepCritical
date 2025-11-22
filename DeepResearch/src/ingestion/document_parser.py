@@ -47,8 +47,7 @@ class PythonParser(DocumentParser):
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
                 # Extract source for this node
-                chunk = ast.get_source_segment(source, node)
-                if chunk:
+                if chunk := ast.get_source_segment(source, node):
                     doc_id = f"{file_path}::{node.name}::{node.lineno}"
                     documents.append(
                         Document(
@@ -153,6 +152,4 @@ class ParserFactory:
 
         if ext == ".py":
             return PythonParser()
-        if ext == ".md":
-            return MarkdownParser()
-        return PlainTextParser()
+        return MarkdownParser() if ext == ".md" else PlainTextParser()

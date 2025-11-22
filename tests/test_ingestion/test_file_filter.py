@@ -12,19 +12,19 @@ def test_gitignore_excludes_patterns(tmp_path):
     gitignore.write_text("__pycache__/\n*.pyc\n.venv/\n")
 
     # Create FileFilter
-    filter = FileFilter(gitignore_path=str(gitignore))
+    file_filter = FileFilter(gitignore_path=str(gitignore))
 
     # Test exclusions
-    assert not filter.should_index(str(tmp_path / "__pycache__/foo.pyc"))
-    assert not filter.should_index(str(tmp_path / "test.pyc"))
-    assert not filter.should_index(str(tmp_path / ".venv/lib/foo.py"))
+    assert not file_filter.should_index(str(tmp_path / "__pycache__/foo.pyc"))
+    assert not file_filter.should_index(str(tmp_path / "test.pyc"))
+    assert not file_filter.should_index(str(tmp_path / ".venv/lib/foo.py"))
 
     # Test allowed
     # Need to match allowed extensions (.txt default in filter?)
     # The default in Phase 4A was ['.txt', '.py', '.md']
     (tmp_path / "src").mkdir()
     (tmp_path / "src/main.py").write_text("print('hello')")
-    assert filter.should_index(str(tmp_path / "src/main.py"))
+    assert file_filter.should_index(str(tmp_path / "src/main.py"))
 
 
 def test_binary_file_detection(tmp_path):
@@ -37,7 +37,7 @@ def test_binary_file_detection(tmp_path):
     text_file = tmp_path / "test.txt"
     text_file.write_text("Hello")
 
-    filter = FileFilter(allowed_extensions=[".bin", ".txt"])
+    file_filter = FileFilter(allowed_extensions=[".bin", ".txt"])
 
-    assert not filter.should_index(str(binary_file))
-    assert filter.should_index(str(text_file))
+    assert not file_filter.should_index(str(binary_file))
+    assert file_filter.should_index(str(text_file))

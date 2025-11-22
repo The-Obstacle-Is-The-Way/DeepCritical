@@ -83,3 +83,49 @@ async def test_file_watcher_detects_modification(
     # Cleanup
     watcher.stop()
     pipeline.stop()
+
+
+@pytest.mark.asyncio
+async def test_file_watcher_detects_deletion(
+    tmp_path, vector_store_fixture, embeddings_fixture
+):
+    """Test that FileWatcher detects file deletions."""
+    # Setup
+    test_file = tmp_path / "test.txt"
+    test_file.write_text("Content to delete")
+
+    file_filter = FileFilter(allowed_extensions=[".txt"])
+    pipeline = IndexingPipeline(
+        embeddings=embeddings_fixture, vector_store=vector_store_fixture, batch_size=1
+    )
+    pipeline.start()
+
+    watcher = FileWatcher(
+        watch_paths=[str(tmp_path)], file_filter=file_filter, indexing_pipeline=pipeline
+    )
+    watcher.start()
+
+    # Ensure initial indexing
+    time.sleep(2)
+    from DeepResearch.src.datatypes.rag import SearchType
+
+    results = await vector_store_fixture.search(
+        "Content", SearchType.SIMILARITY, top_k=1
+    )
+    assert len(results) > 0
+
+    # Delete file
+    test_file.unlink()
+    time.sleep(2)
+
+    # Verify deletion from index
+    results_after = await vector_store_fixture.search(
+        "Content", SearchType.SIMILARITY, top_k=1
+    )
+    # Should be empty or significantly different (if using dummy embeddings)
+    # With empty store, should be empty
+    assert len(results_after) == 0
+
+    # Cleanup
+    watcher.stop()
+    pipeline.stop()

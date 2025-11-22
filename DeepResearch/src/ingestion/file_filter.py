@@ -1,8 +1,11 @@
 """File filtering for indexing."""
 
+import logging
 from pathlib import Path
 
 from gitignore_parser import parse_gitignore
+
+logger = logging.getLogger(__name__)
 
 
 class FileFilter:
@@ -15,8 +18,15 @@ class FileFilter:
     ):
         self.allowed_extensions = allowed_extensions or [".txt", ".py", ".md"]
 
-        if gitignore_path and Path(gitignore_path).exists():
-            self.gitignore_matcher = parse_gitignore(gitignore_path)
+        if gitignore_path:
+            path = Path(gitignore_path)
+            if path.exists():
+                self.gitignore_matcher = parse_gitignore(gitignore_path)
+            else:
+                logger.warning(
+                    f"Gitignore file not found at {gitignore_path}, patterns will be ignored."
+                )
+                self.gitignore_matcher = lambda x: False
         else:
             self.gitignore_matcher = lambda x: False
 

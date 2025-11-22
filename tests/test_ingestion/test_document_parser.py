@@ -114,3 +114,52 @@ def test_factory_selects_markdown_parser(tmp_path):
 
     parser = ParserFactory.get_parser(str(md_file))
     assert isinstance(parser, MarkdownParser)
+
+
+def test_plain_text_parser_skips_empty_file(tmp_path):
+    """PlainTextParser.parse should return no documents for an empty file."""
+    empty_txt = tmp_path / "empty.txt"
+    empty_txt.write_text("")
+
+    from DeepResearch.src.ingestion.document_parser import PlainTextParser
+
+    parser = PlainTextParser()
+    documents = parser.parse(str(empty_txt))
+
+    assert isinstance(documents, list)
+    assert len(documents) == 0
+
+
+def test_plain_text_parser_parses_text_file(tmp_path):
+    """PlainTextParser.parse should return a single document with correct metadata."""
+    txt_file = tmp_path / "sample.txt"
+    content = "First line\nSecond line\nThird line"
+    txt_file.write_text(content)
+
+    from DeepResearch.src.ingestion.document_parser import PlainTextParser
+
+    parser = PlainTextParser()
+    documents = parser.parse(str(txt_file))
+
+    assert len(documents) == 1
+    doc = documents[0]
+
+    # Content should include the original text
+    assert "First line" in doc.content
+    assert "Second line" in doc.content
+    assert "Third line" in doc.content
+
+    # Basic metadata expectations; adjust if PlainTextParser uses different keys
+    assert doc.metadata.get("type") == "text"
+    assert doc.metadata.get("file_path") == str(txt_file)
+
+
+def test_factory_selects_plain_text_parser_for_non_code_markdown_extensions(tmp_path):
+    """ParserFactory should return PlainTextParser for non-.py/.md files (e.g., .txt)."""
+    txt_file = tmp_path / "notes.txt"
+    txt_file.write_text("Some plain text content")
+
+    from DeepResearch.src.ingestion.document_parser import PlainTextParser
+
+    parser = ParserFactory.get_parser(str(txt_file))
+    assert isinstance(parser, PlainTextParser)

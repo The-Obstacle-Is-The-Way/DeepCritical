@@ -60,23 +60,34 @@ class IndexingPipeline:
 
     def _process_queue(self) -> None:
         """Background worker that processes indexing queue."""
+        import time
+
         batch: list[Document] = []
+        last_flush_time = time.time()
+        flush_interval = 2.0  # Seconds
 
         while self.running:
             try:
                 # Wait for 1 second, then check if running again
-                file_path = self.queue.get(timeout=1)
+                try:
+                    file_path = self.queue.get(timeout=1)
+                    parser = ParserFactory.get_parser(file_path)
+                    documents = parser.parse(file_path)
+                    batch.extend(documents)
+                except Empty:
+                    pass
 
-                parser = ParserFactory.get_parser(file_path)
-                documents = parser.parse(file_path)
-                batch.extend(documents)
+                current_time = time.time()
+                is_full_batch = len(batch) >= self.batch_size
+                is_time_to_flush = (
+                    batch and (current_time - last_flush_time) >= flush_interval
+                )
 
-                if len(batch) >= self.batch_size:
+                if is_full_batch or is_time_to_flush:
                     self._index_batch(batch)
                     batch = []
-            except Empty:
-                # Queue empty, continue
-                continue
+                    last_flush_time = time.time()
+
             except Exception as e:
                 logger.error(f"Error indexing file: {e}")
 
