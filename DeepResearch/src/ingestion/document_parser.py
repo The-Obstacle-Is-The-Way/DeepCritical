@@ -1,8 +1,10 @@
 """Document parsing."""
+
 import ast
 import re
 from pathlib import Path
 from typing import Any
+
 from DeepResearch.src.datatypes.rag import Document
 
 
@@ -19,7 +21,7 @@ class PythonParser(DocumentParser):
     def parse(self, file_path: str) -> list[Document]:
         """Parse Python file into semantic chunks (functions, classes)."""
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 source = f.read()
         except Exception as e:
             print(f"Error reading {file_path}: {e}")
@@ -59,8 +61,8 @@ class PythonParser(DocumentParser):
                     )
 
         if not documents and source.strip():
-             pass
-             
+            pass
+
         return documents
 
 
@@ -70,7 +72,7 @@ class MarkdownParser(DocumentParser):
     def parse(self, file_path: str) -> list[Document]:
         """Parse markdown file into sections."""
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
         except Exception as e:
             print(f"Error reading {file_path}: {e}")
@@ -111,7 +113,7 @@ class MarkdownParser(DocumentParser):
 
         if current_section:
             sections.append("\n".join(current_section))
-            
+
         # Filter empty sections
         return [s for s in sections if s.strip()]
 
@@ -122,7 +124,7 @@ class PlainTextParser(DocumentParser):
     def parse(self, file_path: str) -> list[Document]:
         """Parse file as plain text."""
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
 
             # Simple check to avoid indexing empty files
@@ -151,8 +153,6 @@ class ParserFactory:
 
         if ext == ".py":
             return PythonParser()
-        elif ext == ".md":
+        if ext == ".md":
             return MarkdownParser()
-        else:
-            return PlainTextParser()
-
+        return PlainTextParser()

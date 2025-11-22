@@ -1,0 +1,50 @@
+# Ingestion Pipeline Configuration
+
+watch:
+  # Paths to watch for changes
+  paths:
+    - "DeepResearch/"
+    - "tests/"
+    - "docs/"
+
+  # Watch recursively
+  recursive: true
+
+filter:
+  # Path to .gitignore file
+  gitignore_path: ".gitignore"
+
+  # Allowed file extensions
+  allowed_extensions:
+    - ".py"
+    - ".md"
+    - ".txt"
+    - ".yaml"
+    - ".yml"
+    - ".json"
+    - ".rst"
+
+  # Additional exclude patterns
+  exclude_patterns:
+    - "__pycache__"
+    - ".pytest_cache"
+    - ".venv"
+    - "venv"
+    - ".git"
+
+indexing:
+  # Batch size for embedding (number of chunks to embed at once)
+  batch_size: 50
+
+  # Auto-start indexing pipeline
+  auto_start: true
+
+# Embeddings configuration (reuse from RAG)
+embeddings:
+  defaults:
+    - /rag/embeddings/sentence_transformers
+
+# Vector store configuration (reuse from RAG)
+vector_store:
+  defaults:
+    - /rag/vector_store/faiss

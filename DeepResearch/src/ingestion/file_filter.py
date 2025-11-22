@@ -1,5 +1,7 @@
 """File filtering for indexing."""
+
 from pathlib import Path
+
 from gitignore_parser import parse_gitignore
 
 
@@ -7,9 +9,9 @@ class FileFilter:
     """Filters files based on gitignore patterns and file extensions."""
 
     def __init__(
-        self, 
-        gitignore_path: str | None = None, 
-        allowed_extensions: list[str] | None = None
+        self,
+        gitignore_path: str | None = None,
+        allowed_extensions: list[str] | None = None,
     ):
         self.allowed_extensions = allowed_extensions or [".txt", ".py", ".md"]
 
@@ -40,7 +42,7 @@ class FileFilter:
         """Check if file is text (not binary)."""
         try:
             # Try reading start of file as UTF-8
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 f.read(512)
             return True
         except (UnicodeDecodeError, FileNotFoundError):

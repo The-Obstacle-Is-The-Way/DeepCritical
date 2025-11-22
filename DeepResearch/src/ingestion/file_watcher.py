@@ -55,32 +55,20 @@ class CodebaseEventHandler(FileSystemEventHandler):
         self.file_filter = file_filter
         self.pipeline = pipeline
 
-        def on_created(self, event: FileSystemEvent) -> None:
-            src_path = str(event.src_path)
-            if not event.is_directory and self.file_filter.should_index(src_path):
-                self.pipeline.enqueue_file(src_path)
-    
-        def on_modified(self, event: FileSystemEvent) -> None:
-            src_path = str(event.src_path)
-            if not event.is_directory and self.file_filter.should_index(src_path):
-                self.pipeline.enqueue_file(src_path)
-    
-        def on_deleted(self, event: FileSystemEvent) -> None:
-            if not event.is_directory:
-                # remove_file is async, but we are in a sync callback
-                # We can fire-and-forget using asyncio.run or better yet,
-                # add to a queue for deletion same as creation.
-                # For now, the pipeline.remove_file is async.
-                # Let's update pipeline to have a sync wrapper or queue it.
-                # BUT pipeline.remove_file assumes vector store is available.
-                
-                # Simplest for MVP: Use asyncio.run here? No, event handler runs in Observer thread.
-                # Better: Enqueue deletion task? 
-                # For Phase 4A MVP, we only tested creation/modification.
-                # The implementation uses pipeline.remove_file(event.src_path)
-                # I'll implement a sync wrapper in the event handler for now.
-                try:
-                     src_path = str(event.src_path)
-                     asyncio.run(self.pipeline.remove_file(src_path))
-                except Exception as e:
-                    print(f"Error removing file {event.src_path}: {e}")
+    def on_created(self, event: FileSystemEvent) -> None:
+        src_path = str(event.src_path)
+        if not event.is_directory and self.file_filter.should_index(src_path):
+            self.pipeline.enqueue_file(src_path)
+
+    def on_modified(self, event: FileSystemEvent) -> None:
+        src_path = str(event.src_path)
+        if not event.is_directory and self.file_filter.should_index(src_path):
+            self.pipeline.enqueue_file(src_path)
+
+    def on_deleted(self, event: FileSystemEvent) -> None:
+        if not event.is_directory:
+            try:
+                src_path = str(event.src_path)
+                asyncio.run(self.pipeline.remove_file(src_path))
+            except Exception as e:
+                print(f"Error removing file {event.src_path}: {e}")

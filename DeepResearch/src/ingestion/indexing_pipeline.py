@@ -45,6 +45,7 @@ class IndexingPipeline:
         if hasattr(self.vector_store, "documents"):
             # Cast for type safety if needed, but python runtime is duck typed
             from typing import cast
+
             docs_dict = cast("dict[str, Document]", self.vector_store.documents)
             doc_ids = [
                 doc_id
