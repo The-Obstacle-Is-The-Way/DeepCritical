@@ -22,6 +22,7 @@ from ..prompts.neo4j_queries import (
     LIST_VECTOR_INDEXES,
     VECTOR_INDEX_EXISTS,
 )
+from ..utils.config_loader import ModelConfigLoader
 
 
 def connect_to_neo4j(config: Neo4jConnectionConfig) -> Any | None:
@@ -190,7 +191,7 @@ def create_publication_vector_index(driver: Any, database: str) -> bool:
         index_name="publication_abstract_vector",
         node_label="Publication",
         vector_property="abstract_embedding",
-        dimensions=384,  # Default for sentence-transformers
+        dimensions=ModelConfigLoader().get_embedding_dimension(),
         metric=VectorIndexMetric.COSINE,
     )
 
@@ -213,7 +214,7 @@ def create_document_vector_index(driver: Any, database: str) -> bool:
         index_name="document_content_vector",
         node_label="Document",
         vector_property="embedding",
-        dimensions=384,  # Default for sentence-transformers
+        dimensions=ModelConfigLoader().get_embedding_dimension(),
         metric=VectorIndexMetric.COSINE,
     )
 
@@ -236,7 +237,7 @@ def create_chunk_vector_index(driver: Any, database: str) -> bool:
         index_name="chunk_text_vector",
         node_label="Chunk",
         vector_property="embedding",
-        dimensions=384,  # Default for sentence-transformers
+        dimensions=ModelConfigLoader().get_embedding_dimension(),
         metric=VectorIndexMetric.COSINE,
     )
 

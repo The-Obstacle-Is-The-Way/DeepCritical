@@ -514,10 +514,13 @@ async def example_streaming():
 
 async def example_embeddings():
     """Example of embedding usage."""
-    client = create_vllm_client("sentence-transformers/all-MiniLM-L6-v2")
+    from DeepResearch.src.utils.config_loader import ModelConfigLoader
+
+    model_name = ModelConfigLoader().get_default_embedding_model()
+    client = create_vllm_client(model_name)
 
     embedding_request = EmbeddingRequest(
-        model="sentence-transformers/all-MiniLM-L6-v2",
+        model=model_name,
         input=["Hello world", "How are you?"],
     )
 

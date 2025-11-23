@@ -257,8 +257,9 @@ class SubAgentMiddleware(BaseMiddleware):
             pass
 
         # Create a basic agent (this would be more sophisticated in practice)
+        # from DeepResearch.src.utils.config_loader import ModelConfigLoader
         # agent = Agent(
-        #     model=subagent.model or "anthropic:claude-sonnet-4-0",
+        #     model=subagent.model or ModelConfigLoader().get_default_llm_model(),
         #     system_prompt=subagent.prompt,
         #     tools=self.default_tools
         # )

@@ -57,11 +57,18 @@ class Neo4jVectorStore(VectorStore):
         # Vector index configuration
         index_config = getattr(config, "index", None)
         if index_config is None:
+            # Fallback to SSOT for dimension if not in config
+            dimension = config.embedding_dimension
+            if dimension is None:
+                from DeepResearch.src.utils.config_loader import ModelConfigLoader
+
+                dimension = ModelConfigLoader().get_embedding_dimension()
+
             index_config = VectorIndexConfig(
                 index_name=config.collection_name or "document_vectors",
                 node_label="Document",
                 vector_property="embedding",
-                dimensions=config.embedding_dimension,
+                dimensions=dimension,
                 metric=VectorIndexMetric(config.distance_metric or "cosine"),
             )
 

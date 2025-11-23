@@ -409,11 +409,14 @@ class VLLMRAGSystem(BaseModel):
 
         # Initialize embeddings if embedding server is configured
         if self.deployment.embedding_config:
+            # Lazy import to avoid circular dependencies if any
+            from DeepResearch.src.utils.config_loader import ModelConfigLoader
+
             embedding_config = EmbeddingsConfig(
                 model_type=EmbeddingModelType.CUSTOM,
                 model_name=self.deployment.embedding_config.model_name,
                 base_url=f"http://{self.deployment.embedding_config.host}:{self.deployment.embedding_config.port}",  # type: ignore
-                num_dimensions=384,  # Default for sentence-transformers models
+                num_dimensions=ModelConfigLoader().get_embedding_dimension(),
             )
             self.embeddings = VLLMEmbeddings(embedding_config)
 

@@ -259,8 +259,8 @@ class EmbeddingsConfig(BaseModel):
     model_name: str = Field(..., description="Model name or identifier")
     api_key: str | None = Field(None, description="API key for external services")
     base_url: HttpUrl | None = Field(None, description="Base URL for API endpoints")
-    num_dimensions: int = Field(
-        1536, description="Number of dimensions in embedding vectors"
+    num_dimensions: int | None = Field(
+        None, description="Number of dimensions in embedding vectors"
     )
     batch_size: int = Field(32, description="Batch size for embedding generation")
     max_retries: int = Field(3, description="Maximum retry attempts")
@@ -324,7 +324,9 @@ class VectorStoreConfig(BaseModel):
     database: str | None = Field(None, description="Database name")
     collection_name: str | None = Field(None, description="Collection/index name")
     api_key: str | None = Field(None, description="API key for cloud services")
-    embedding_dimension: int = Field(1536, description="Embedding vector dimension")
+    embedding_dimension: int | None = Field(
+        None, description="Embedding vector dimension"
+    )
     distance_metric: str = Field("cosine", description="Distance metric for similarity")
     index_type: str | None = Field(None, description="Index type (e.g., HNSW, IVF)")
 
@@ -520,7 +522,13 @@ class Embeddings(ABC):
     @property
     def num_dimensions(self) -> int:
         """The number of dimensions in the resulting vector."""
-        return self.config.num_dimensions
+        if self.config.num_dimensions is not None:
+            return self.config.num_dimensions
+
+        # Fallback to SSOT
+        from DeepResearch.src.utils.config_loader import ModelConfigLoader
+
+        return ModelConfigLoader().get_embedding_dimension()
 
     @abstractmethod
     async def vectorize_documents(

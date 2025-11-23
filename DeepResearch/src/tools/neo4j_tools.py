@@ -39,13 +39,15 @@ class Neo4jVectorSearchTool(ToolRunner):
         from ..datatypes.vllm_integration import (
             VLLMEmbeddings,
         )  # reuse existing embedding wrapper if available
+        from ..utils.config_loader import ModelConfigLoader
 
         # For simplicity, use sentence-transformers via VLLMEmbeddings if configured, else fallback to OpenAI
+        loader = ModelConfigLoader()
         emb = VLLMEmbeddings(
             EmbeddingsConfig(
                 model_type=EmbeddingModelType.SENTENCE_TRANSFORMERS,
-                model_name="sentence-transformers/all-MiniLM-L6-v2",
-                num_dimensions=384,
+                model_name=loader.get_default_embedding_model(),
+                num_dimensions=loader.get_embedding_dimension(),
             )
         )
         qvec = emb.vectorize_query_sync(params["query"])  # type: ignore[arg-type]
