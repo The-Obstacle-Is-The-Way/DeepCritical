@@ -217,7 +217,7 @@ class PrimaryREACTWorkflow(BaseNode[ResearchState]):
             if result["success"]:
                 # Extract spawned workflows
                 ctx.state.spawned_workflows = [
-                    str(e) for e in orchestrator.state.active_executions
+                    e.execution_id for e in orchestrator.state.active_executions
                 ] + [
                     exec.execution_id
                     for exec in orchestrator.state.completed_executions

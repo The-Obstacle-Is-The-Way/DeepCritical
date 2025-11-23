@@ -571,6 +571,10 @@ class VectorStore(ABC):
         """Delete the specified list of documents by their record identifiers."""
 
     @abstractmethod
+    async def delete_file(self, file_path: str) -> bool:
+        """Delete all documents associated with a specific file path."""
+
+    @abstractmethod
     async def search(
         self,
         query: str,
