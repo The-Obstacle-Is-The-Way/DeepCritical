@@ -243,6 +243,24 @@ class Neo4jVectorStore(VectorStore):
 
         return await self.add_documents(documents, **kwargs)
 
+    async def delete_file(self, file_path: str) -> bool:
+        """Delete all documents associated with a specific file path."""
+        async with self.get_session() as session:
+            # Find all document IDs for this file
+            result = await session.run(
+                """MATCH (d:Document)
+                WHERE d.metadata.file_path = $file_path
+                RETURN d.id""",
+                {"file_path": file_path},
+            )
+
+            doc_ids = [record["d.id"] async for record in result]
+
+            if not doc_ids:
+                return False
+
+            return await self.delete_documents(doc_ids)
+
     async def delete_documents(self, document_ids: list[str]) -> bool:
         """Delete documents by their IDs."""
         async with self.get_session() as session:
