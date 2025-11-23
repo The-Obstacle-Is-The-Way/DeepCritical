@@ -66,7 +66,7 @@ async def test_file_watcher_initial_scan_integration(
 def test_file_watcher_initial_scan_logic(
     tmp_path, embeddings_fixture, vector_store_fixture
 ):
-    """Unit test to verify initial_scan flag controls _initial_crawl."""
+    """Unit test to verify initial_scan flag controls scan_all."""
     file_filter = FileFilter(allowed_extensions=[".txt"])
     pipeline = IndexingPipeline(
         embeddings=embeddings_fixture, vector_store=vector_store_fixture, batch_size=1
@@ -76,7 +76,7 @@ def test_file_watcher_initial_scan_logic(
     watcher = FileWatcher(
         watch_paths=[str(tmp_path)], file_filter=file_filter, indexing_pipeline=pipeline
     )
-    with patch.object(watcher, "_initial_crawl") as mock_crawl:
+    with patch.object(watcher, "scan_all") as mock_crawl:
         with patch.object(watcher.observer, "start"):  # Don't actually start observer
             watcher.start(initial_scan=True)
             mock_crawl.assert_called_once()
@@ -85,7 +85,7 @@ def test_file_watcher_initial_scan_logic(
     watcher = FileWatcher(
         watch_paths=[str(tmp_path)], file_filter=file_filter, indexing_pipeline=pipeline
     )
-    with patch.object(watcher, "_initial_crawl") as mock_crawl:
+    with patch.object(watcher, "scan_all") as mock_crawl:
         with patch.object(watcher.observer, "start"):
             watcher.start(initial_scan=False)
             mock_crawl.assert_not_called()
