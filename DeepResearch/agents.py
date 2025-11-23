@@ -58,7 +58,7 @@ def _get_default_llm_model() -> str:
     Returns:
         Default LLM model name from config or fallback
     """
-    global _model_config_loader
+    global _model_config_loader  # noqa: PLW0603
     if _model_config_loader is None:
         _model_config_loader = ModelConfigLoader()
     return _model_config_loader.get_default_llm_model()

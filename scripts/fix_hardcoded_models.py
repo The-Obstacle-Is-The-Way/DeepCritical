@@ -29,8 +29,6 @@ def fix_hardcoded_model_defaults(file_path: Path) -> int:
     content = re.sub(pattern1, replacement1, content)
 
     # Pattern 2: model_name="anthropic:claude-sonnet-4-0" in Field()
-    pattern2 = r'model_name\s*=\s*"anthropic:claude-sonnet-4-0"'
-    replacement2 = "model_name = None  # Uses config default"
     # Only replace in Field() context
     content = re.sub(
         r'(Field\s*\([^)]*?)model_name\s*=\s*"anthropic:claude-sonnet-4-0"',
@@ -39,8 +37,7 @@ def fix_hardcoded_model_defaults(file_path: Path) -> int:
     )
 
     # Pattern 3: Default parameters in function signatures
-    pattern3 = r'(\w+:\s*str\s*=\s*)"anthropic:claude-sonnet-4-0"'
-    # This is tricky - only replace if it's a parameter named 'model' or 'model_name'
+    # Only replace if it's a parameter named 'model' or 'model_name'
     content = re.sub(
         r'(model(?:_name)?:\s*str\s*=\s*)"anthropic:claude-sonnet-4-0"',
         r"\1None  # Uses config default",

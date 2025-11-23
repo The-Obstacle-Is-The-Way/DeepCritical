@@ -128,9 +128,7 @@ class ModelConfigLoader:
 
         except Exception as e:
             # Config file parse error or other issue - FAIL EXPLICITLY
-            logger.error(
-                f"Failed to load model config from {config_path}: {e}", exc_info=True
-            )
+            logger.exception(f"Failed to load model config from {config_path}")
             # Uncle Bob: Make failures visible!
             raise ValueError(
                 f"Model configuration file is malformed or unreadable: {config_path}"

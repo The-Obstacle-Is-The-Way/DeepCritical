@@ -25,7 +25,7 @@ _model_config_loader: ModelConfigLoader | None = None
 
 def _get_model_loader() -> ModelConfigLoader:
     """Lazy-init the model config loader to avoid repeated file reads."""
-    global _model_config_loader
+    global _model_config_loader  # noqa: PLW0603
     if _model_config_loader is None:
         _model_config_loader = ModelConfigLoader()
     return _model_config_loader

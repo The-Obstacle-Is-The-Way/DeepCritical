@@ -22,6 +22,7 @@ from DeepResearch.src.tools.bioinformatics.haplotypecaller_server import (
     HaplotypeCallerServer,
 )
 from DeepResearch.src.tools.bioinformatics.samtools_server import SamtoolsServer
+from DeepResearch.src.utils.config_loader import ModelConfigLoader
 from examples.simple_genomics_discovery.genomics_deps import GenomicsAgentDeps
 
 # For testing without API key
@@ -50,8 +51,6 @@ class GenomicsAnalysisResult(BaseModel):
 
 # Create Pydantic AI agent (Phase 3: Agent Creation)
 # Use TestModel for testing/CI (no API key needed), real model from config otherwise
-from DeepResearch.src.utils.config_loader import ModelConfigLoader
-
 _model_config = ModelConfigLoader()
 _model = (
     TestModel()
