@@ -1,6 +1,7 @@
 """File filtering for indexing."""
 
 import logging
+from fnmatch import fnmatch
 from pathlib import Path
 
 from gitignore_parser import parse_gitignore
@@ -53,7 +54,7 @@ class FileFilter:
 
         # Check exclude patterns
         for pattern in self.exclude_patterns:
-            if pattern in str(path):
+            if fnmatch(str(path), pattern):
                 return False
 
         # Check gitignore
