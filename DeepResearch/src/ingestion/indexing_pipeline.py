@@ -4,7 +4,6 @@ import asyncio
 import logging
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from queue import Empty, Queue
 from typing import Any
@@ -31,9 +30,6 @@ class IndexingPipeline:
 
         # Threading and async management
         self._loop: asyncio.AbstractEventLoop | None = None
-        self._executor = ThreadPoolExecutor(
-            max_workers=1, thread_name_prefix="indexing"
-        )
 
         # Stats
         self.indexed_files: set[str] = set()
@@ -52,7 +48,6 @@ class IndexingPipeline:
         self.running = False
         if self.worker_thread:
             self.worker_thread.join(timeout=5)
-        self._executor.shutdown(wait=True)
 
     def enqueue_file(self, file_path: str) -> None:
         """Add file to indexing queue."""

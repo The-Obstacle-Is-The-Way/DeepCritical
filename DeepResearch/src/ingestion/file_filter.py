@@ -16,8 +16,10 @@ class FileFilter:
         gitignore_path: str | None = None,
         mgrepignore_path: str | None = None,
         allowed_extensions: list[str] | None = None,
+        exclude_patterns: list[str] | None = None,
     ):
         self.allowed_extensions = allowed_extensions or [".txt", ".py", ".md"]
+        self.exclude_patterns = exclude_patterns or []
 
         # Parse .gitignore
         if gitignore_path:
@@ -48,6 +50,12 @@ class FileFilter:
     def should_index(self, file_path: str) -> bool:
         """Check if file should be indexed."""
         path = Path(file_path)
+
+        # Check exclude patterns
+        for pattern in self.exclude_patterns:
+            if pattern in str(path):
+                return False
+
         # Check gitignore
         if self.gitignore_matcher(file_path):
             return False

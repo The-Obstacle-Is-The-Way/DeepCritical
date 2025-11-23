@@ -1,9 +1,25 @@
+import asyncio
 import time
 
 import pytest
 
 from DeepResearch.src.datatypes.rag import SearchType
 from DeepResearch.src.ingestion.indexing_pipeline import IndexingPipeline
+
+
+async def wait_for_condition(
+    condition_fn,
+    timeout: float = 10.0,
+    interval: float = 0.1,
+    error_msg: str = "Condition not met",
+) -> None:
+    """Poll condition_fn until True or timeout."""
+    start = time.time()
+    while time.time() - start < timeout:
+        if await condition_fn():
+            return
+        await asyncio.sleep(interval)
+    raise AssertionError(f"{error_msg} (timeout={timeout}s)")
 
 
 @pytest.mark.asyncio
@@ -27,14 +43,13 @@ async def test_indexing_pipeline_processes_files(
     pipeline.enqueue_file(str(test_file))
 
     # Wait for processing
-    time.sleep(1)
+    async def _is_indexed():
+        results = await vector_store_fixture.search(
+            "test document", SearchType.SIMILARITY, top_k=1
+        )
+        return len(results) > 0 and "test document" in results[0].document.content
 
-    # Verify indexed
-    results = await vector_store_fixture.search(
-        "test document", SearchType.SIMILARITY, top_k=1
-    )
-    assert len(results) > 0
-    assert "test document" in results[0].document.content
+    await wait_for_condition(_is_indexed, error_msg="Document not indexed")
 
     # Cleanup
     pipeline.stop()
@@ -59,21 +74,13 @@ async def test_indexing_pipeline_batch_processing(
     for i in range(5):
         pipeline.enqueue_file(str(tmp_path / f"test{i}.txt"))
 
-    # Wait for processing
-    time.sleep(2)
+    # Wait for SOME processing (at least first 2 batches = 4 files)
+    # We check if at least one file is indexed to verify it started
+    async def _started_processing():
+        stats = pipeline.get_stats()
+        return stats["total_files"] >= 4
 
-    # Verify all indexed (batching should handle them)
-    # 5 files, batch 2 -> 2, 2, 1 (remaining)
-    # The 'remaining' 1 is processed when queue is empty and loop continues?
-    # No, logic is: if len(batch) >= size: index.
-    # The remaining items sit in `batch` list until `_process_queue` finishes?
-    # My implementation has:
-    # if batch: self._index_batch(batch)
-    # But that's only reached if `self.running` becomes False (loop exits).
-    # So with `batch_size=2`, the last 1 file will NOT be indexed until stop() is called!
-    # This is a bug/feature of the current implementation.
-    # The test should either call stop(), or I should implement a timeout/flush logic.
-    # For this phase, calling stop() is the way to flush.
+    await wait_for_condition(_started_processing, error_msg="Batch processing stalled")
 
     pipeline.stop()  # This flushes remaining batch
 
@@ -93,7 +100,6 @@ async def test_indexing_pipeline_remove_file(
     pipeline = IndexingPipeline(
         embeddings=embeddings_fixture, vector_store=vector_store_fixture, batch_size=1
     )
-    # Don't need to start the thread for this test, we call remove_file directly (which is async)
 
     # Manually add documents to vector store to simulate indexed file
     from DeepResearch.src.datatypes.rag import Document
@@ -117,28 +123,18 @@ async def test_indexing_pipeline_remove_file(
     assert len(await vector_store_fixture.search("Chunk 1", SearchType.SIMILARITY)) > 0
     assert len(await vector_store_fixture.search("Keep me", SearchType.SIMILARITY)) > 0
 
-    # Remove file
+    # Start pipeline to process deletion
+    pipeline.start()
     pipeline.enqueue_deletion(file_path)
 
-    # Process queue (since we didn't start the thread, we need to manually process or simulate)
-    # But wait, this test was "test_indexing_pipeline_remove_file".
-    # It originally called `await pipeline.remove_file`.
-    # Now `enqueue_deletion` is sync and puts into queue.
-    # We need the pipeline running to process it.
-    pipeline.start()
-    time.sleep(1)  # Wait for worker to pick it up
-    pipeline.stop()
-
     # Verify removal
-    # Note: Dummy vector store might need specific behavior check
-    # But assuming FAISS/fixture works:
-    results_deleted = await vector_store_fixture.search(
-        "Chunk 1", SearchType.SIMILARITY
-    )
-    # Check that doc1 and doc2 are NOT in results
-    found_ids = [r.document.id for r in results_deleted]
-    assert "doc1" not in found_ids
-    assert "doc2" not in found_ids
+    async def _is_deleted():
+        results = await vector_store_fixture.search("Chunk 1", SearchType.SIMILARITY)
+        found_ids = [r.document.id for r in results]
+        return "doc1" not in found_ids and "doc2" not in found_ids
+
+    await wait_for_condition(_is_deleted, error_msg="File not deleted")
+    pipeline.stop()
 
     # Verify other file remains
     results_kept = await vector_store_fixture.search("Keep me", SearchType.SIMILARITY)
@@ -164,20 +160,18 @@ async def test_indexing_pipeline_stats(
         file_path.write_text(f"Content {i}")
         pipeline.enqueue_file(str(file_path))
 
-    # Wait for processing
-    time.sleep(2.1)  # Slightly more than flush interval
+    # Wait for first batch
+    async def _first_batch_done():
+        stats = pipeline.get_stats()
+        return stats["total_files"] >= 2
 
-    stats = pipeline.get_stats()
-    # We expect at least the first batch (2 files) to be done.
-    # The second batch might depend on timing.
-    assert stats["total_files"] >= 2
+    await wait_for_condition(_first_batch_done, error_msg="Stats not updating")
 
-    # To be safe, we stop the pipeline to force flush
     pipeline.stop()
 
     stats = pipeline.get_stats()
     assert stats["total_files"] == 3
     assert stats["total_documents"] >= 3
-    assert stats["total_batches"] >= 2  # 3 docs / batch_size 2 = 2 batches (2 + 1)
+    assert stats["total_batches"] >= 2
     assert stats["last_index_time"] is not None
     assert not stats["running"]

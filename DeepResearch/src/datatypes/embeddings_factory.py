@@ -29,9 +29,10 @@ def create_embeddings(config: EmbeddingsConfig) -> Embeddings:
         return VLLMEmbeddings(config)
 
     if config.model_type == EmbeddingModelType.OPENAI:
-        # Optional fallback - raise error if not implemented or return class if added
         raise ValueError(
-            "OpenAI embeddings not yet implemented. Use sentence_transformers or mixedbread."
+            "OpenAI embeddings are not implemented. "
+            "Please use 'sentence_transformers' or 'mixedbread' instead. "
+            "Update your config to use configs/rag/embeddings/sentence_transformers.yaml"
         )
 
     raise ValueError(f"Unknown embedding model type: {config.model_type}")
