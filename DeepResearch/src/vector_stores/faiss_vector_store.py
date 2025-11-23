@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import os
 import pickle
+import threading
 from typing import Any
 
 import faiss  # type: ignore
@@ -53,26 +54,33 @@ class FAISSVectorStore(VectorStore):
         self.documents: dict[str, Document] = {}
         # Map from stable_hash -> doc_id
         self.id_map: dict[int, str] = {}
+        self._lock = threading.RLock()
         self._load()
+
+    def __len__(self) -> int:
+        with self._lock:
+            return len(self.documents)
 
     def _load(self):
         """Loads the index and document data from disk if they exist."""
-        if os.path.exists(self.index_path):
-            self.index = faiss.read_index(self.index_path)  # type: ignore
-        if os.path.exists(self.data_path):
-            with open(self.data_path, "rb") as f:
-                self.documents = pickle.load(f)
-                # Rebuild id_map
-                self.id_map = {
-                    _stable_hash(doc_id): doc_id for doc_id in self.documents
-                }
+        with self._lock:
+            if os.path.exists(self.index_path):
+                self.index = faiss.read_index(self.index_path)  # type: ignore
+            if os.path.exists(self.data_path):
+                with open(self.data_path, "rb") as f:
+                    self.documents = pickle.load(f)
+                    # Rebuild id_map
+                    self.id_map = {
+                        _stable_hash(doc_id): doc_id for doc_id in self.documents
+                    }
 
     def _save(self):
         """Saves the index and document data to disk."""
-        if self.index:
-            faiss.write_index(self.index, self.index_path)  # type: ignore
-        with open(self.data_path, "wb") as f:
-            pickle.dump(self.documents, f)
+        with self._lock:
+            if self.index:
+                faiss.write_index(self.index, self.index_path)  # type: ignore
+            with open(self.data_path, "wb") as f:
+                pickle.dump(self.documents, f)
 
     async def add_documents(
         self, documents: list[Document], **kwargs: Any
@@ -84,29 +92,31 @@ class FAISSVectorStore(VectorStore):
             return []
 
         texts = [doc.content for doc in documents]
+        # Embed outside lock to avoid blocking readers
         embeddings = await self.embeddings.vectorize_documents(texts)
 
-        doc_ids = [doc.id for doc in documents]
-        # Use stable hash
-        doc_id_vectors = np.array(
-            [_stable_hash(doc_id) for doc_id in doc_ids], dtype=np.int64
-        )
+        with self._lock:
+            doc_ids = [doc.id for doc in documents]
+            # Use stable hash
+            doc_id_vectors = np.array(
+                [_stable_hash(doc_id) for doc_id in doc_ids], dtype=np.int64
+            )
 
-        for i, doc in enumerate(documents):
-            doc.embedding = embeddings[i]
-            self.documents[doc.id] = doc
-            self.id_map[_stable_hash(doc.id)] = doc.id
+            for i, doc in enumerate(documents):
+                doc.embedding = embeddings[i]
+                self.documents[doc.id] = doc
+                self.id_map[_stable_hash(doc.id)] = doc.id
 
-        new_vectors = np.array(embeddings, dtype=np.float32)
-        if self.index is None:
-            dimension = new_vectors.shape[1]
-            base_index = faiss.IndexFlatL2(dimension)  # type: ignore
-            self.index = faiss.IndexIDMap(base_index)  # type: ignore
+            new_vectors = np.array(embeddings, dtype=np.float32)
+            if self.index is None:
+                dimension = new_vectors.shape[1]
+                base_index = faiss.IndexFlatL2(dimension)  # type: ignore
+                self.index = faiss.IndexIDMap(base_index)  # type: ignore
 
-        self.index.add_with_ids(new_vectors, doc_id_vectors)  # type: ignore
+            self.index.add_with_ids(new_vectors, doc_id_vectors)  # type: ignore
 
-        self._save()
-        return doc_ids
+            self._save()
+            return doc_ids
 
     async def add_document_chunks(
         self, chunks: list[Chunk], **kwargs: Any
@@ -124,39 +134,44 @@ class FAISSVectorStore(VectorStore):
         """
         Deletes documents from the vector store.
         """
-        if not document_ids or self.index is None:
-            return False
+        with self._lock:
+            if not document_ids or self.index is None:
+                return False
 
-        ids_to_remove = np.array(
-            [_stable_hash(doc_id) for doc_id in document_ids], dtype=np.int64
-        )
-        self.index.remove_ids(ids_to_remove)  # type: ignore
+            ids_to_remove = np.array(
+                [_stable_hash(doc_id) for doc_id in document_ids], dtype=np.int64
+            )
+            self.index.remove_ids(ids_to_remove)  # type: ignore
 
-        for doc_id in document_ids:
-            if doc_id in self.documents:
-                del self.documents[doc_id]
-            hashed_id = _stable_hash(doc_id)
-            if hashed_id in self.id_map:
-                del self.id_map[hashed_id]
+            for doc_id in document_ids:
+                if doc_id in self.documents:
+                    del self.documents[doc_id]
+                hashed_id = _stable_hash(doc_id)
+                if hashed_id in self.id_map:
+                    del self.id_map[hashed_id]
 
-        self._save()
-        return True
+            self._save()
+            return True
 
     async def get_document(self, document_id: str) -> Document | None:
         """
         Retrieves a document by its ID.
         """
-        return self.documents.get(document_id)
+        with self._lock:
+            return self.documents.get(document_id)
 
     async def update_document(self, document: Document) -> bool:
         """
         Updates an existing document.
         """
-        if document.id not in self.documents:
+        # Optimization: check existence before expensive delete+add
+        with self._lock:
+            exists = document.id in self.documents
+
+        if not exists:
             return False
 
-        # For simplicity, we'll re-add the document.
-        # This is not the most efficient way, but it's safe.
+        # Re-add handles embedding generation (outside lock) and then locked update
         await self.delete_documents([document.id])
         await self.add_documents([document])
         return True
@@ -186,30 +201,31 @@ class FAISSVectorStore(VectorStore):
         """
         Searches the vector store for a given query.
         """
-        if self.index is None:
-            return []
+        with self._lock:
+            if self.index is None:
+                return []
 
-        top_k = kwargs.get("top_k", 10)
-        query_vector = np.array([query_embedding], dtype=np.float32)
+            top_k = kwargs.get("top_k", 10)
+            query_vector = np.array([query_embedding], dtype=np.float32)
 
-        distances, indices = self.index.search(query_vector, top_k)  # type: ignore
+            distances, indices = self.index.search(query_vector, top_k)  # type: ignore
 
-        results = []
-        for i in range(len(indices[0])):
-            hashed_id = indices[0][i]
-            if hashed_id == -1:  # FAISS returns -1 for no match
-                continue
+            results = []
+            for i in range(len(indices[0])):
+                hashed_id = indices[0][i]
+                if hashed_id == -1:  # FAISS returns -1 for no match
+                    continue
 
-            found_doc_id = self.id_map.get(hashed_id)
+                found_doc_id = self.id_map.get(hashed_id)
 
-            if found_doc_id and found_doc_id in self.documents:
-                document = self.documents[found_doc_id]
-                results.append(
-                    SearchResult(
-                        document=document,
-                        score=float(distances[0][i]),
-                        rank=i + 1,
+                if found_doc_id and found_doc_id in self.documents:
+                    document = self.documents[found_doc_id]
+                    results.append(
+                        SearchResult(
+                            document=document,
+                            score=float(distances[0][i]),
+                            rank=i + 1,
+                        )
                     )
-                )
 
-        return results
+            return results
