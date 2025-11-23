@@ -20,17 +20,47 @@ logger = logging.getLogger(__name__)
 class FileWatcher:
     """Watches directories for file changes and triggers indexing."""
 
+    # Common directories to always exclude for performance/safety.
+    # Can be overridden by subclasses or instance attribute if needed.
+    DEFAULT_IGNORED_DIRS = frozenset(
+        {
+            ".git",
+            ".venv",
+            "venv",
+            "node_modules",
+            "__pycache__",
+            "site",
+            ".mypy_cache",
+            ".pytest_cache",
+            ".ruff_cache",
+            "htmlcov",
+        }
+    )
+
     def __init__(
         self,
         watch_paths: list[str],
         file_filter: FileFilter,
         indexing_pipeline: IndexingPipeline,
         recursive: bool = True,
+        ignored_dirs: set[str] | None = None,
     ):
+        """
+        Args:
+            watch_paths: Directories to watch
+            file_filter: FileFilter instance for filtering files
+            indexing_pipeline: Pipeline to send files to
+            recursive: Whether to watch subdirectories
+            ignored_dirs: Set of directory names to skip during traversal.
+                         Defaults to DEFAULT_IGNORED_DIRS if not provided.
+        """
         self.watch_paths = watch_paths
         self.file_filter = file_filter
         self.indexing_pipeline = indexing_pipeline
         self.recursive = recursive
+        self.ignored_dirs = (
+            ignored_dirs if ignored_dirs is not None else self.DEFAULT_IGNORED_DIRS
+        )
         self.observer = Observer()
         self.event_handler = CodebaseEventHandler(
             file_filter=file_filter, pipeline=indexing_pipeline
@@ -59,20 +89,6 @@ class FileWatcher:
         logger.info("Starting initial crawl of watch paths...")
         count = 0
 
-        # Common directories to always exclude for performance/safety
-        IGNORED_DIRS = {
-            ".git",
-            ".venv",
-            "venv",
-            "node_modules",
-            "__pycache__",
-            "site",
-            ".mypy_cache",
-            ".pytest_cache",
-            ".ruff_cache",
-            "htmlcov",
-        }
-
         for watch_path in self.watch_paths:
             if not os.path.exists(watch_path):
                 logger.warning(f"Watch path does not exist: {watch_path}")
@@ -81,11 +97,11 @@ class FileWatcher:
             if self.recursive:
                 for root, dirs, files in os.walk(watch_path):
                     # Prune directories to prevent traversing massive ignored folders
-                    dirs[:] = [d for d in dirs if d not in IGNORED_DIRS]
+                    dirs[:] = [d for d in dirs if d not in self.ignored_dirs]
 
                     # Additional check: if a directory is gitignored, prune it?
                     # This is expensive to check for every dir if the matcher is slow,
-                    # but safer. For now, rely on IGNORED_DIRS and file filtering.
+                    # but safer. For now, rely on ignored_dirs and file filtering.
 
                     for file in files:
                         file_path = os.path.join(root, file)

@@ -10,7 +10,12 @@ logger = logging.getLogger(__name__)
 
 
 class FileFilter:
-    """Filters files based on gitignore patterns and file extensions."""
+    """Filters files based on gitignore patterns and file extensions.
+
+    Note: exclude_patterns uses glob-style matching (e.g., "*.pyc", "**/test_*.py").
+    This is intentionally different from simple substring matching for more
+    powerful and predictable pattern behavior.
+    """
 
     def __init__(
         self,
@@ -19,6 +24,13 @@ class FileFilter:
         allowed_extensions: list[str] | None = None,
         exclude_patterns: list[str] | None = None,
     ):
+        """
+        Args:
+            gitignore_path: Path to .gitignore file
+            mgrepignore_path: Path to .mgrepignore file
+            allowed_extensions: List of allowed file extensions (e.g., [".py", ".md"])
+            exclude_patterns: Glob-style patterns to exclude (e.g., ["*.pyc", "**/__pycache__/*"])
+        """
         self.allowed_extensions = allowed_extensions or [".txt", ".py", ".md"]
         self.exclude_patterns = exclude_patterns or []
 
