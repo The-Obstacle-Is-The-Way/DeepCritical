@@ -60,7 +60,10 @@ results = await server.search("query", top_k=5)
 ### Agentic (`agentic_demo.py`)
 
 ```python
-agent = Agent(model="anthropic:claude-sonnet-4-0", ...)
+from DeepResearch.src.utils.config_loader import ModelConfigLoader
+
+config = ModelConfigLoader()
+agent = Agent(model=config.get_default_llm_model(), ...)
 
 @agent.tool_plain
 async def mgrep_search(query: str) -> str:
