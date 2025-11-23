@@ -28,12 +28,37 @@ import docker
 from DeepResearch.src.datatypes.ag_types import (
     content_str,
 )
+from DeepResearch.src.utils.config_loader import ModelConfigLoader
 from docker import errors as docker_errors
+
+# Lazy-load model config
+_model_config_loader: ModelConfigLoader | None = None
+
+
+def _get_model_config() -> ModelConfigLoader:
+    """Lazy-load ModelConfigLoader singleton."""
+    global _model_config_loader
+    if _model_config_loader is None:
+        _model_config_loader = ModelConfigLoader()
+    return _model_config_loader
+
+
+def get_default_model() -> str:
+    """Get default model from SSOT config."""
+    return _get_model_config().get_default_llm_model()
+
+
+def get_fast_model() -> str:
+    """Get fast/cheap model from SSOT config."""
+    return _get_model_config().get_fast_llm_model()
+
 
 # Constants
 SENTINEL = object()
-DEFAULT_MODEL = "gpt-5"
-FAST_MODEL = "gpt-5-nano"
+# DEPRECATED: Use get_default_model() and get_fast_model() instead
+# These remain for backwards compatibility but will be removed
+DEFAULT_MODEL = None  # Use get_default_model()
+FAST_MODEL = None  # Use get_fast_model()
 
 # Regular expression for finding a code block
 # ```[ \t]*(\w+)?[ \t]*\r?\n(.*?)[ \t]*\r?\n``` Matches multi-line code blocks.
@@ -596,54 +621,69 @@ def eval_function_completions(
     }
 
 
-_GENERATE_ASSERTIONS_CONFIG = {
-    "prompt": """Given the signature and docstring, write the exactly same number of assertion(s) for the provided example(s) in the docstring, without assertion messages.
+# Prompts used by config getters below
+_FUNC_COMPLETION_PROMPT = "# Python 3{definition}"
+_FUNC_COMPLETION_STOP = ["\nclass", "\ndef", "\nif", "\nprint"]
+
+
+def get_generate_assertions_config() -> dict:
+    """Get config for assertion generation with SSOT model."""
+    return {
+        "prompt": """Given the signature and docstring, write the exactly same number of assertion(s) for the provided example(s) in the docstring, without assertion messages.
 
 func signature:
 {definition}
 assertions:""",
-    "model": FAST_MODEL,
-    "max_tokens": 256,
-    "stop": "\n\n",
-}
+        "model": get_fast_model(),
+        "max_tokens": 256,
+        "stop": "\n\n",
+    }
 
-_FUNC_COMPLETION_PROMPT = "# Python 3{definition}"
-_FUNC_COMPLETION_STOP = ["\nclass", "\ndef", "\nif", "\nprint"]
-_IMPLEMENT_CONFIGS = [
-    {
-        "model": FAST_MODEL,
-        "prompt": _FUNC_COMPLETION_PROMPT,
-        "temperature": 0,
-        "cache_seed": 0,
-    },
-    {
-        "model": FAST_MODEL,
-        "prompt": _FUNC_COMPLETION_PROMPT,
-        "stop": _FUNC_COMPLETION_STOP,
-        "n": 7,
-        "cache_seed": 0,
-    },
-    {
-        "model": DEFAULT_MODEL,
-        "prompt": _FUNC_COMPLETION_PROMPT,
-        "temperature": 0,
-        "cache_seed": 1,
-    },
-    {
-        "model": DEFAULT_MODEL,
-        "prompt": _FUNC_COMPLETION_PROMPT,
-        "stop": _FUNC_COMPLETION_STOP,
-        "n": 2,
-        "cache_seed": 2,
-    },
-    {
-        "model": DEFAULT_MODEL,
-        "prompt": _FUNC_COMPLETION_PROMPT,
-        "stop": _FUNC_COMPLETION_STOP,
-        "n": 1,
-        "cache_seed": 2,
-    },
-]
+
+def get_implement_configs() -> list[dict]:
+    """Get implementation configs with SSOT models."""
+    return [
+        {
+            "model": get_fast_model(),
+            "prompt": _FUNC_COMPLETION_PROMPT,
+            "temperature": 0,
+            "cache_seed": 0,
+        },
+        {
+            "model": get_fast_model(),
+            "prompt": _FUNC_COMPLETION_PROMPT,
+            "stop": _FUNC_COMPLETION_STOP,
+            "n": 7,
+            "cache_seed": 0,
+        },
+        {
+            "model": get_default_model(),
+            "prompt": _FUNC_COMPLETION_PROMPT,
+            "temperature": 0,
+            "cache_seed": 1,
+        },
+        {
+            "model": get_default_model(),
+            "prompt": _FUNC_COMPLETION_PROMPT,
+            "stop": _FUNC_COMPLETION_STOP,
+            "n": 2,
+            "cache_seed": 2,
+        },
+        {
+            "model": get_default_model(),
+            "prompt": _FUNC_COMPLETION_PROMPT,
+            "stop": _FUNC_COMPLETION_STOP,
+            "n": 1,
+            "cache_seed": 2,
+        },
+    ]
+
+
+# DEPRECATED: Use get_generate_assertions_config() instead
+_GENERATE_ASSERTIONS_CONFIG = None
+
+# DEPRECATED: Use get_implement_configs() instead
+_IMPLEMENT_CONFIGS = None
 
 
 def create_virtual_env(dir_path: str, **env_args) -> SimpleNamespace:
