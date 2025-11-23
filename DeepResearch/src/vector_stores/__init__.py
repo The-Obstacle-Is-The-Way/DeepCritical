@@ -52,13 +52,17 @@ def create_vector_store(
             )
 
         # Extract or create index config
+        from DeepResearch.src.utils.config_loader import ModelConfigLoader
+
+        default_dim = ModelConfigLoader().get_embedding_dimension()
+
         index = getattr(config, "index", None)
         if index is None:
             index = VectorIndexConfig(
                 index_name=getattr(config, "collection_name", "documents"),
                 node_label="Document",
                 vector_property="embedding",
-                dimensions=getattr(config, "embedding_dimension", 384),
+                dimensions=getattr(config, "embedding_dimension", default_dim),
                 metric=VectorIndexMetric.COSINE,
             )
 
@@ -70,7 +74,7 @@ def create_vector_store(
             ),
             database=getattr(config, "database", "neo4j"),
             collection_name=getattr(config, "collection_name", "documents"),
-            embedding_dimension=getattr(config, "embedding_dimension", 384),
+            embedding_dimension=getattr(config, "embedding_dimension", default_dim),
             distance_metric="cosine",
         )
 

@@ -476,13 +476,15 @@ async def generate_neo4j_embeddings(
         Dictionary with counts of generated embeddings
     """
     # Create vector store config (minimal for this operation)
+    from DeepResearch.src.utils.config_loader import ModelConfigLoader
+
     from ..datatypes.neo4j_types import VectorIndexConfig, VectorIndexMetric
 
     vector_config = VectorIndexConfig(
         index_name="temp_index",
         node_label="Document",
         vector_property="embedding",
-        dimensions=384,  # Default
+        dimensions=ModelConfigLoader().get_embedding_dimension(),
         metric=VectorIndexMetric.COSINE,
     )
 

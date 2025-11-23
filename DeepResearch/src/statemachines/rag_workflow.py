@@ -112,6 +112,9 @@ class InitializeRAG(BaseNode[RAGState]):  # type: ignore[unsupported-base]
 
         # Create embeddings config
         embeddings_cfg = rag_cfg.get("embeddings", {})
+        # Import lazy to avoid circular dependencies
+        from DeepResearch.src.utils.config_loader import ModelConfigLoader
+
         embeddings_config = EmbeddingsConfig(
             model_type=EmbeddingModelType(
                 embeddings_cfg.get("model_type", "sentence_transformers")
@@ -119,7 +122,9 @@ class InitializeRAG(BaseNode[RAGState]):  # type: ignore[unsupported-base]
             model_name=embeddings_cfg.get("model_name", "all-MiniLM-L6-v2"),
             api_key=embeddings_cfg.get("api_key"),
             base_url=embeddings_cfg.get("base_url"),
-            num_dimensions=embeddings_cfg.get("num_dimensions", 384),
+            num_dimensions=embeddings_cfg.get(
+                "num_dimensions", ModelConfigLoader().get_embedding_dimension()
+            ),
             batch_size=embeddings_cfg.get("batch_size", 32),
             query_instruction=embeddings_cfg.get("query_instruction"),
             device=embeddings_cfg.get("device"),

@@ -429,13 +429,15 @@ async def perform_vector_search(
         List of search results
     """
     # Create vector store config (minimal for search)
+    from DeepResearch.src.utils.config_loader import ModelConfigLoader
+
     from ..datatypes.neo4j_types import VectorIndexConfig, VectorIndexMetric
 
     vector_config = VectorIndexConfig(
         index_name=search_params.get("index_name", "publication_abstract_vector"),
         node_label="Publication",
         vector_property="abstract_embedding",
-        dimensions=384,  # Default
+        dimensions=ModelConfigLoader().get_embedding_dimension(),
         metric=VectorIndexMetric.COSINE,
     )
 
