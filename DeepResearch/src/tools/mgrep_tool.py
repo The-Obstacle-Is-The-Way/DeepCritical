@@ -48,19 +48,23 @@ class MgrepSearchTool(ToolRunner):
         try:
             server = get_mgrep_server()
 
+            # Safely execute async search from sync context
+            # If we are in a running event loop (e.g. inside an async agent calling this sync tool),
+            # we must not block the loop. We offload to a separate thread.
             try:
-                loop = asyncio.get_event_loop()
+                loop = asyncio.get_running_loop()
             except RuntimeError:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
+                loop = None
 
-            if loop.is_running():
-                future = asyncio.run_coroutine_threadsafe(
-                    server.search(query, top_k=top_k), loop
-                )
-                results = future.result()
+            coro = server.search(query, top_k=top_k)
+
+            if loop and loop.is_running():
+                from concurrent.futures import ThreadPoolExecutor
+
+                with ThreadPoolExecutor(max_workers=1) as executor:
+                    results = executor.submit(asyncio.run, coro).result()
             else:
-                results = loop.run_until_complete(server.search(query, top_k=top_k))
+                results = asyncio.run(coro)
 
             data = [
                 {
@@ -103,7 +107,7 @@ async def mgrep_search(ctx: RunContext[Any], query: str, top_k: int = 5) -> str:
                 "file": r.document.metadata.get("file_path", "unknown"),
                 "score": round(r.score, 3),
                 "content_snippet": (
-                    r.document.content[:200] + "..."
+                    f"{r.document.content[:200]}..."
                     if len(r.document.content) > 200
                     else r.document.content
                 ),

@@ -278,9 +278,15 @@ class MgrepServer:
             data_dir.mkdir(parents=True, exist_ok=True)
             # In case paths are outside data_dir, clean them explicitly.
             if index_path.exists():
-                index_path.unlink()
+                if index_path.is_dir():
+                    shutil.rmtree(index_path)
+                else:
+                    index_path.unlink()
             if store_path.exists():
-                store_path.unlink()
+                if store_path.is_dir():
+                    shutil.rmtree(store_path)
+                else:
+                    store_path.unlink()
             logger.info("Reset mgrep data directory for a clean start.")
         except Exception as exc:  # pragma: no cover - best effort cleanup
             logger.warning(f"Failed to reset data directory '{data_dir}': {exc}")
