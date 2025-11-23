@@ -56,6 +56,11 @@ class MgrepServer:
     @classmethod
     def get_instance(cls, config_path: str | Path | None = None) -> "MgrepServer":
         """Get or create singleton instance."""
+        if cls._instance is not None and config_path is not None:
+            logger.warning(
+                f"MgrepServer already initialized. Ignoring config_path: {config_path}"
+            )
+
         if cls._instance is None:
             cls._instance = cls(config_path)
         return cls._instance
