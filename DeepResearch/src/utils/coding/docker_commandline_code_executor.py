@@ -24,7 +24,7 @@ from DeepResearch.src.utils.code_utils import TIMEOUT_MSG, _cmd
 
 from .base import CodeBlock, CodeExecutor, CodeExtractor, CommandLineCodeResult
 from .markdown_code_extractor import MarkdownCodeExtractor
-from .utils import _get_file_name_from_content, silence_pip
+from .utils import _get_file_name_from_content
 
 logger = logging.getLogger(__name__)
 

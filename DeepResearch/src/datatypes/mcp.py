@@ -578,8 +578,9 @@ class MCPClientConfig(BaseModel):
 class MCPAgentIntegration(BaseModel):
     """Configuration for Pydantic AI agents integrated with MCP servers."""
 
-    agent_model: str = Field(
-        None, description="Model to use for the agent (uses ModelConfigLoader default if None)"
+    agent_model: str | None = Field(
+        None,
+        description="Model to use for the agent (uses ModelConfigLoader default if None)",
     )
     system_prompt: str = Field(..., description="System prompt for the agent")
     mcp_servers: list[MCPClientConfig] = Field(

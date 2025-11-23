@@ -9,12 +9,10 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
-from typing import Any, Dict, List
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from DeepResearch.src import datatypes
 from DeepResearch.src.datatypes.neo4j_types import (
     Neo4jConnectionConfig,
     Neo4jVectorStoreConfig,

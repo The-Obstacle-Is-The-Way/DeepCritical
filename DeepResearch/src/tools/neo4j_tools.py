@@ -5,7 +5,6 @@ from typing import Any
 from neo4j import GraphDatabase
 
 from ..datatypes.neo4j_types import Neo4jConnectionConfig
-from ..datatypes.rag import SearchType
 from .base import ExecutionResult, ToolRunner, ToolSpec, registry
 
 

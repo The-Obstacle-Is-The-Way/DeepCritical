@@ -11,7 +11,7 @@ import asyncio
 import json
 import time
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic_ai import Agent, ModelRetry
@@ -23,14 +23,6 @@ from DeepResearch.src.prompts.deep_agent_prompts import get_system_prompt
 from DeepResearch.src.tools.deep_agent_middleware import (
     MiddlewarePipeline,
     create_default_middleware_pipeline,
-)
-from DeepResearch.src.tools.deep_agent_tools import (
-    edit_file_tool,
-    list_files_tool,
-    read_file_tool,
-    task_tool,
-    write_file_tool,
-    write_todos_tool,
 )
 
 

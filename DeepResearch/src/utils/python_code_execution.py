@@ -7,9 +7,7 @@ with enhanced error handling and pydantic-ai integration.
 
 import os
 import tempfile
-from typing import Annotated, Any
-
-from pydantic import BaseModel, Field
+from typing import Any
 
 from DeepResearch.src.tools.base import ExecutionResult, ToolRunner, ToolSpec
 from DeepResearch.src.utils.code_utils import execute_code

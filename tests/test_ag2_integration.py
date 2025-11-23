@@ -5,7 +5,6 @@ This module tests the vendored AG2 code execution capabilities
 with configurable retry/error handling in agent workflows.
 """
 
-import asyncio
 from typing import Any, cast
 
 import pytest
@@ -261,17 +260,11 @@ print(f"Factorial of 5: {factorial(5)}")
         """Test that all AG2 integration imports work correctly."""
         # This test ensures all the vendored AG2 components can be imported
         from DeepResearch.src.datatypes.ag_types import (
-            MessageContentType,
-            UserMessageImageContentPart,
-            UserMessageTextContentPart,
             content_str,
         )
         from DeepResearch.src.utils.code_utils import execute_code, infer_lang
         from DeepResearch.src.utils.coding import (
             CodeBlock,
-            CodeExecutor,
-            CodeExtractor,
-            CodeResult,
             DockerCommandLineCodeExecutor,
             LocalCommandLineCodeExecutor,
             MarkdownCodeExtractor,

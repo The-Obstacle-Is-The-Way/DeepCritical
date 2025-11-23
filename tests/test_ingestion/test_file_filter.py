@@ -1,7 +1,3 @@
-from pathlib import Path
-
-import pytest
-
 from DeepResearch.src.ingestion.file_filter import FileFilter
 
 

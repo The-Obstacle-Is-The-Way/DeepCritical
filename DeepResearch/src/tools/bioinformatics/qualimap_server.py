@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from testcontainers.core.container import DockerContainer
 

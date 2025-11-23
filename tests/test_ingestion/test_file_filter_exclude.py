@@ -1,7 +1,5 @@
 from unittest.mock import patch
 
-import pytest
-
 from DeepResearch.src.ingestion.file_filter import FileFilter
 
 

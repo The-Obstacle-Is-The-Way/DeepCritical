@@ -17,10 +17,7 @@ from DeepResearch.src.datatypes.agent_framework_types import (
     ChatMessage,
     Role,
 )
-from DeepResearch.src.datatypes.agents import AgentDependencies, AgentResult, AgentType
 from DeepResearch.src.datatypes.coding_base import CodeBlock
-from DeepResearch.src.prompts.code_exec import CodeExecPrompts
-from DeepResearch.src.prompts.code_sandbox import CodeSandboxPrompts
 
 
 class CodeGenerationAgent:

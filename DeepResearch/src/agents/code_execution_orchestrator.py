@@ -18,7 +18,7 @@ from DeepResearch.src.agents.code_generation_agent import (
     CodeGenerationAgent,
 )
 from DeepResearch.src.datatypes.agent_framework_types import AgentRunResponse
-from DeepResearch.src.datatypes.agents import AgentDependencies, AgentResult, AgentType
+from DeepResearch.src.datatypes.agents import AgentResult, AgentType
 from DeepResearch.src.statemachines.code_execution_workflow import CodeExecutionWorkflow
 
 
@@ -26,8 +26,9 @@ class CodeExecutionConfig(BaseModel):
     """Configuration for code execution orchestrator."""
 
     # Agent configuration
-    generation_model: str = Field(
-        None, description="Model for code generation (uses ModelConfigLoader default if None)"
+    generation_model: str | None = Field(
+        None,
+        description="Model for code generation (uses ModelConfigLoader default if None)",
     )
 
     # Execution configuration

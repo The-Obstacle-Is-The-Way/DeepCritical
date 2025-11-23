@@ -1,6 +1,3 @@
-from typing import List
-
-
 def chunk_text_by_character(
     text: str, chunk_size: int, chunk_overlap: int
 ) -> list[str]:

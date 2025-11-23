@@ -15,7 +15,6 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic_ai import Agent, RunContext
 
-from DeepResearch.src.utils.config_loader import load_model_config
 from DeepResearch.src.datatypes.workflow_orchestration import (
     HypothesisDataset,
     HypothesisTestingEnvironment,
@@ -36,6 +35,7 @@ from DeepResearch.src.datatypes.workflow_orchestration import (
     WorkflowType,
 )
 from DeepResearch.src.prompts.workflow_orchestrator import WorkflowOrchestratorPrompts
+from DeepResearch.src.utils.config_loader import load_model_config
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -106,9 +106,8 @@ class PrimaryWorkflowOrchestrator:
         prompts = WorkflowOrchestratorPrompts()
 
         self.primary_agent = Agent[OrchestratorDependencies, str](
-            model=self.config.primary_workflow.parameters.get(
-                "model_name"
-            ) or load_model_config().get_default_llm_model(),
+            model=self.config.primary_workflow.parameters.get("model_name")
+            or load_model_config().get_default_llm_model(),
             deps_type=OrchestratorDependencies,
             system_prompt=prompts.get_system_prompt(),
             instructions=prompts.get_instructions(),

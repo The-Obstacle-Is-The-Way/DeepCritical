@@ -7,8 +7,6 @@ with existing MCP servers (FastQCServer, SamtoolsServer, HaplotypeCallerServer).
 Reference: burner_docs/haplotype_agent/04_testing_strategy.md
 """
 
-import pytest
-
 
 class TestMCPServerIntegration:
     """Test suite for MCP server integration in genomics agent."""

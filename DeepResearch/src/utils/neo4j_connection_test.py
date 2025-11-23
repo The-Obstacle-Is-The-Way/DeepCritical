@@ -8,7 +8,7 @@ for Neo4j databases, including health checks and performance validation.
 from __future__ import annotations
 
 import time
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any
 
 from neo4j import GraphDatabase
 
@@ -417,7 +417,6 @@ def benchmark_connection_pooling(
         f"--- BENCHMARKING CONNECTION POOLING ({num_connections} connections, {num_queries} queries) ---"
     )
 
-    import asyncio
     import concurrent.futures
 
     result: dict[str, Any] = {

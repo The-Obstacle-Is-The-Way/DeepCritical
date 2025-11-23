@@ -49,7 +49,7 @@ from DeepResearch.src.datatypes.rag import (
     RAGResponse,
     SearchType,
 )
-from DeepResearch.src.datatypes.vllm_integration import VLLMDeployment, VLLMRAGSystem
+from DeepResearch.src.datatypes.vllm_integration import VLLMDeployment
 from DeepResearch.src.utils.execution_status import ExecutionStatus
 
 if TYPE_CHECKING:
@@ -407,7 +407,7 @@ class QueryRAG(BaseNode[RAGState]):  # type: ignore[unsupported-base]
         """Execute RAG query using RAGAgent."""
         try:
             # Import here to avoid circular import
-            from omegaconf import DictConfig, OmegaConf
+            from omegaconf import OmegaConf
 
             from DeepResearch.src.agents import RAGAgent
 

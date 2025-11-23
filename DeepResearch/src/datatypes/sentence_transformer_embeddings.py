@@ -3,7 +3,6 @@
 import asyncio
 import logging
 import threading  # Keep threading for the Lock
-from typing import Any
 
 from sentence_transformers import SentenceTransformer  # type: ignore
 

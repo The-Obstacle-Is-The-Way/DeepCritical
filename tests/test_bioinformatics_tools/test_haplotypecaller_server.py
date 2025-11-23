@@ -6,8 +6,6 @@ Test Philosophy: Robert C. Martin - "Test behaviors, not implementation."
 - Integration tests: Slow, test real GATK execution
 """
 
-from pathlib import Path
-
 import pytest
 
 from DeepResearch.src.tools.bioinformatics.haplotypecaller_server import (

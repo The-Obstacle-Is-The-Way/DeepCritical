@@ -198,7 +198,7 @@ class WorkflowPatternExecutor:
         agent_executors: dict[str, Any] | None = None,
     ) -> str:
         """Execute collaborative pattern workflow."""
-        from omegaconf import DictConfig, OmegaConf
+        from omegaconf import OmegaConf
 
         config_dict = self.config.dict()
         config_omega = OmegaConf.create(config_dict) if config_dict else None
@@ -218,7 +218,7 @@ class WorkflowPatternExecutor:
         agent_executors: dict[str, Any] | None = None,
     ) -> str:
         """Execute sequential pattern workflow."""
-        from omegaconf import DictConfig, OmegaConf
+        from omegaconf import OmegaConf
 
         config_dict = self.config.dict()
         config_omega = OmegaConf.create(config_dict) if config_dict else None
@@ -239,7 +239,7 @@ class WorkflowPatternExecutor:
         agent_executors: dict[str, Any] | None = None,
     ) -> str:
         """Execute hierarchical pattern workflow."""
-        from omegaconf import DictConfig, OmegaConf
+        from omegaconf import OmegaConf
 
         config_dict = self.config.dict()
         config_omega = OmegaConf.create(config_dict) if config_dict else None
@@ -261,7 +261,7 @@ class WorkflowPatternExecutor:
         agent_executors: dict[str, Any] | None = None,
     ) -> str:
         """Execute workflow with specified pattern."""
-        from omegaconf import DictConfig, OmegaConf
+        from omegaconf import OmegaConf
 
         config_dict = self.config.dict()
         config_omega = OmegaConf.create(config_dict) if config_dict else None

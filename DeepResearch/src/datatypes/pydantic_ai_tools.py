@@ -7,7 +7,6 @@ that integrate with the Pydantic AI framework.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
 
 from DeepResearch.src.utils.pydantic_ai_utils import build_agent as _build_agent
@@ -29,7 +28,7 @@ class WebSearchBuiltinRunner:
 
     def __init__(self):
         # Import base classes locally to avoid circular imports
-        from DeepResearch.src.tools.base import ToolRunner, ToolSpec
+        from DeepResearch.src.tools.base import ToolSpec
 
         # Initialize spec for validation
         self.spec = ToolSpec(
@@ -103,7 +102,7 @@ class CodeExecBuiltinRunner:
 
     def __init__(self):
         # Import base classes locally to avoid circular imports
-        from DeepResearch.src.tools.base import ToolRunner, ToolSpec
+        from DeepResearch.src.tools.base import ToolSpec
 
         # Initialize spec for validation
         self.spec = ToolSpec(
@@ -179,7 +178,7 @@ class UrlContextBuiltinRunner:
 
     def __init__(self):
         # Import base classes locally to avoid circular imports
-        from DeepResearch.src.tools.base import ToolRunner, ToolSpec
+        from DeepResearch.src.tools.base import ToolSpec
 
         # Initialize spec for validation
         self.spec = ToolSpec(

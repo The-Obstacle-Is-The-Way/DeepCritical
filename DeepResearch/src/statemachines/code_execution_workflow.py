@@ -387,8 +387,6 @@ class FormatResponse(BaseNode[CodeExecutionWorkflowState]):  # type: ignore[unsu
     def run(self, state: CodeExecutionWorkflowState) -> Any:
         """Format the execution results into a user-friendly response."""
         try:
-            import time
-
             from DeepResearch.src.datatypes.agent_framework_types import (
                 ChatMessage,
                 Role,

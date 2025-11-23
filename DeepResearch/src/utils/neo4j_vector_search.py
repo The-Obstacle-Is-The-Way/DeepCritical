@@ -7,8 +7,7 @@ including similarity search, hybrid search, and filtered search capabilities.
 
 from __future__ import annotations
 
-import asyncio
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from neo4j import GraphDatabase
 

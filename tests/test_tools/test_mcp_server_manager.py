@@ -9,11 +9,9 @@ import pytest
 
 from DeepResearch.src.datatypes.mcp import (
     MCPServerConfig,
-    MCPServerDeployment,
     MCPServerStatus,
 )
 from DeepResearch.src.tools.bioinformatics.fastqc_server import FastQCServer
-from DeepResearch.src.tools.mcp_server_tools import MCPServerManager
 
 
 class TestMCPServerManager:

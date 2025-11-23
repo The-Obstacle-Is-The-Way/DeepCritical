@@ -9,8 +9,6 @@ Reference: burner_docs/haplotype_agent/02_implementation_plan.md Phase 6
 
 from pathlib import Path
 
-import pytest
-
 
 class TestDemoScriptStructure:
     """Test basic structure of demo script."""

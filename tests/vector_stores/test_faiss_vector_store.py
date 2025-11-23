@@ -1,8 +1,6 @@
 import os
 from unittest.mock import MagicMock
 
-import faiss  # type: ignore
-import numpy as np
 import pytest
 
 from DeepResearch.src.datatypes.rag import Document, SearchType, VectorStoreType

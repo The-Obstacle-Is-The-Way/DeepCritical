@@ -7,8 +7,7 @@ MCP server methods (not CLI directly).
 Reference: burner_docs/haplotype_agent/02_implementation_plan.md Phase 4
 """
 
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -58,7 +57,6 @@ class TestRunFastQCTool:
     @pytest.mark.asyncio
     async def test_run_fastqc_calls_mcp_server(self, tmp_path):
         """Test that run_fastqc calls FastQCServer.run_fastqc method."""
-        from unittest.mock import AsyncMock
 
         from examples.simple_genomics_discovery.genomics_agent import (
             fastqc_server,

@@ -7,8 +7,7 @@ in Neo4j databases, including name normalization and affiliation corrections.
 
 from __future__ import annotations
 
-import json
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any, TypedDict
 
 from neo4j import GraphDatabase
 

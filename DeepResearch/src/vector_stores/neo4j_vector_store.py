@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -20,7 +19,6 @@ from ..datatypes.rag import (
     VectorStore,
     VectorStoreConfig,
 )
-from .neo4j_config import Neo4jVectorStoreConfig
 
 
 class Neo4jVectorStore(VectorStore):

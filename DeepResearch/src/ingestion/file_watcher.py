@@ -3,9 +3,6 @@
 import logging
 
 from watchdog.events import (
-    FileCreatedEvent,
-    FileDeletedEvent,
-    FileModifiedEvent,
     FileSystemEvent,
     FileSystemEventHandler,
 )

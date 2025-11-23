@@ -5,7 +5,6 @@ Following TDD approach with Red → Green → Refactor cycles.
 """
 
 from pathlib import Path
-from typing import Any
 
 import pytest
 from pydantic import BaseModel
@@ -293,7 +292,6 @@ class TestRunGenomicsAnalysis:
     @pytest.mark.asyncio
     async def test_run_genomics_analysis_returns_result_model(self, tmp_path):
         """Test that run_genomics_analysis returns GenomicsAnalysisResult."""
-        from pathlib import Path
         from unittest.mock import AsyncMock, patch
 
         from examples.simple_genomics_discovery.genomics_agent import (

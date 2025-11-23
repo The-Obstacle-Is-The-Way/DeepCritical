@@ -5,7 +5,6 @@ Adapted from AG2 jupyter code executor for stateful code execution using Jupyter
 """
 
 import base64
-import json
 import os
 import uuid
 from pathlib import Path

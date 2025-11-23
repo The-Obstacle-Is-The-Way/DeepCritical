@@ -18,7 +18,7 @@ from .deep_agent_types import CustomSubAgent, SubAgent, TaskRequest, TaskResult
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from pydantic_ai import Agent, RunContext
+    from pydantic_ai import Agent
 
     from .deep_agent_state import DeepAgentState
 

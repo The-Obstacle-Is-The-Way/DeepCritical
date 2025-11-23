@@ -100,7 +100,9 @@ class ModelConfigLoader:
             # Find project root using robust search (not brittle .parent chains)
             current_file = Path(__file__)
             project_root = _find_project_root(current_file.parent)
-            config_path = project_root / CONFIGS_DIR_NAME / MODELS_SUBDIR / CONFIG_FILE_NAME
+            config_path = (
+                project_root / CONFIGS_DIR_NAME / MODELS_SUBDIR / CONFIG_FILE_NAME
+            )
 
             logger.debug(f"Loading model config from: {config_path}")
 
@@ -127,8 +129,7 @@ class ModelConfigLoader:
         except Exception as e:
             # Config file parse error or other issue - FAIL EXPLICITLY
             logger.error(
-                f"Failed to load model config from {config_path}: {e}",
-                exc_info=True
+                f"Failed to load model config from {config_path}: {e}", exc_info=True
             )
             # Uncle Bob: Make failures visible!
             raise ValueError(
@@ -151,10 +152,7 @@ class ModelConfigLoader:
         return self.models_config.get("embeddings", {})
 
     def _get_llm_model(
-        self,
-        config_key: str,
-        hardcoded_fallback: str,
-        env_var_name: str | None = None
+        self, config_key: str, hardcoded_fallback: str, env_var_name: str | None = None
     ) -> str:
         """
         DRY helper to get LLM model configuration.
@@ -196,28 +194,25 @@ class ModelConfigLoader:
         return self._get_llm_model(
             config_key="default",
             hardcoded_fallback="anthropic:claude-sonnet-4-0",
-            env_var_name="DEFAULT_LLM_MODEL"
+            env_var_name="DEFAULT_LLM_MODEL",
         )
 
     def get_fast_llm_model(self) -> str:
         """Get fast LLM model for simple tasks."""
         return self._get_llm_model(
-            config_key="fast",
-            hardcoded_fallback="anthropic:claude-haiku-3-5"
+            config_key="fast", hardcoded_fallback="anthropic:claude-haiku-3-5"
         )
 
     def get_advanced_llm_model(self) -> str:
         """Get advanced LLM model for complex reasoning."""
         return self._get_llm_model(
-            config_key="advanced",
-            hardcoded_fallback="anthropic:claude-opus-4"
+            config_key="advanced", hardcoded_fallback="anthropic:claude-opus-4"
         )
 
     def get_fallback_llm_model(self) -> str:
         """Get fallback LLM model for rate limits or errors."""
         return self._get_llm_model(
-            config_key="fallback",
-            hardcoded_fallback="anthropic:claude-sonnet-3-5"
+            config_key="fallback", hardcoded_fallback="anthropic:claude-sonnet-3-5"
         )
 
     def get_agent_llm_model(self, agent_type: str) -> str:
@@ -239,12 +234,16 @@ class ModelConfigLoader:
         # Check environment variable first
         env_model = os.getenv("DEFAULT_EMBEDDING_MODEL")
         if env_model:
-            logger.debug(f"Using embedding model from DEFAULT_EMBEDDING_MODEL: {env_model}")
+            logger.debug(
+                f"Using embedding model from DEFAULT_EMBEDDING_MODEL: {env_model}"
+            )
             return env_model
 
         # Check config
         embeddings_config = self.get_embeddings_config()
-        model = embeddings_config.get("default", "sentence-transformers/all-MiniLM-L6-v2")
+        model = embeddings_config.get(
+            "default", "sentence-transformers/all-MiniLM-L6-v2"
+        )
 
         if model == "sentence-transformers/all-MiniLM-L6-v2":
             logger.debug("No embedding config found, using hardcoded default")

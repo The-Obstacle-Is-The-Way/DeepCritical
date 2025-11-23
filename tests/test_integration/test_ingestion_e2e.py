@@ -1,5 +1,3 @@
-import asyncio
-
 import pytest
 
 from DeepResearch.src.datatypes.rag import SearchType

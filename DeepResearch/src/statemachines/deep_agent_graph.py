@@ -38,7 +38,9 @@ from DeepResearch.src.tools.deep_agent_tools import (
 class AgentBuilderConfig(BaseModel):
     """Configuration for agent builder."""
 
-    model_name: str = Field(None  # Uses config default, description="Model name")
+    model_name: str | None = Field(
+        None, description="Model name (uses ModelConfigLoader default if None)"
+    )
     instructions: str = Field("", description="Additional instructions")
     tools: list[str] = Field(default_factory=list, description="Tool names to include")
     subagents: list[SubAgent | CustomSubAgent] = Field(

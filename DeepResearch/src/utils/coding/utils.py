@@ -6,7 +6,6 @@ Adapted from AG2 coding utilities for use in DeepCritical's code execution syste
 
 import logging
 from pathlib import Path
-from typing import Any
 
 logger = logging.getLogger(__name__)
 

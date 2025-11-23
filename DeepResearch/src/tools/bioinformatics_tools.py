@@ -23,8 +23,6 @@ from limits.strategies import MovingWindowRateLimiter
 from pydantic import BaseModel, Field
 from requests.exceptions import RequestException
 
-from DeepResearch.src.utils.config_loader import load_model_config
-
 from DeepResearch.src.agents.bioinformatics_agents import (
     DataFusionResult,
     ReasoningResult,
@@ -42,6 +40,7 @@ from DeepResearch.src.datatypes.bioinformatics import (
 from DeepResearch.src.statemachines.bioinformatics_workflow import (
     run_bioinformatics_workflow,
 )
+from DeepResearch.src.utils.config_loader import load_model_config
 
 # Note: defer decorator is not available in current pydantic-ai version
 from .base import ExecutionResult, ToolRunner, ToolSpec, registry
@@ -56,8 +55,9 @@ class BioinformaticsToolDeps(BaseModel):
     """Dependencies for bioinformatics tools."""
 
     config: dict[str, Any] = Field(default_factory=dict)
-    model_name: str = Field(
-        None, description="Model to use for AI agents (uses ModelConfigLoader default if None)"
+    model_name: str | None = Field(
+        None,
+        description="Model to use for AI agents (uses ModelConfigLoader default if None)",
     )
     quality_threshold: float = Field(
         0.8, ge=0.0, le=1.0, description="Quality threshold for data fusion"
@@ -72,7 +72,8 @@ class BioinformaticsToolDeps(BaseModel):
 
         return cls(
             config=config,
-            model_name=model_config.get("default") or load_model_config().get_default_llm_model(),
+            model_name=model_config.get("default")
+            or load_model_config().get_default_llm_model(),
             quality_threshold=quality_config.get("default_threshold", 0.8),
             **kwargs,
         )

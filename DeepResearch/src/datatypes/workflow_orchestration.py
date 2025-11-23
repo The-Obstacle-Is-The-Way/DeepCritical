@@ -534,8 +534,9 @@ class AgentOrchestratorConfig(BaseModel):
     agent_role: AgentRole = Field(
         AgentRole.ORCHESTRATOR_AGENT, description="Role of the orchestrator agent"
     )
-    model_name: str = Field(
-        None, description="Model for the orchestrator (uses ModelConfigLoader default if None)"
+    model_name: str | None = Field(
+        None,
+        description="Model for the orchestrator (uses ModelConfigLoader default if None)",
     )
     break_conditions: list[BreakCondition] = Field(
         default_factory=list, description="Break conditions"

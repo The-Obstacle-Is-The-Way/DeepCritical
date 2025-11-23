@@ -11,8 +11,6 @@ Tests the wrapper functions that adapt ToolRunner classes for Pydantic AI agents
 
 import json
 
-import pytest
-
 from DeepResearch.src.tools.base import ExecutionResult
 from DeepResearch.src.tools.mcp_server_tools import (
     MCPServerDeploymentTool,

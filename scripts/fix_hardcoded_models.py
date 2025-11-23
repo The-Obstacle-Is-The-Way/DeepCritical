@@ -25,17 +25,17 @@ def fix_hardcoded_model_defaults(file_path: Path) -> int:
 
     # Pattern 1: model_name: str = "anthropic:claude-sonnet-4-0"
     pattern1 = r'model_name:\s*str\s*=\s*"anthropic:claude-sonnet-4-0"'
-    replacement1 = 'model_name: str | None = None'
+    replacement1 = "model_name: str | None = None"
     content = re.sub(pattern1, replacement1, content)
 
     # Pattern 2: model_name="anthropic:claude-sonnet-4-0" in Field()
     pattern2 = r'model_name\s*=\s*"anthropic:claude-sonnet-4-0"'
-    replacement2 = 'model_name = None  # Uses config default'
+    replacement2 = "model_name = None  # Uses config default"
     # Only replace in Field() context
     content = re.sub(
         r'(Field\s*\([^)]*?)model_name\s*=\s*"anthropic:claude-sonnet-4-0"',
-        r'\1model_name = None  # Uses config default',
-        content
+        r"\1model_name = None  # Uses config default",
+        content,
     )
 
     # Pattern 3: Default parameters in function signatures
@@ -43,11 +43,11 @@ def fix_hardcoded_model_defaults(file_path: Path) -> int:
     # This is tricky - only replace if it's a parameter named 'model' or 'model_name'
     content = re.sub(
         r'(model(?:_name)?:\s*str\s*=\s*)"anthropic:claude-sonnet-4-0"',
-        r'\1None  # Uses config default',
-        content
+        r"\1None  # Uses config default",
+        content,
     )
 
-    replacements = content.count('Uses config default')
+    replacements = content.count("Uses config default")
 
     if content != original_content:
         file_path.write_text(content)
@@ -78,7 +78,10 @@ def main():
         deep_research_dir / "src" / "datatypes" / "bioinformatics_mcp.py",
         deep_research_dir / "src" / "datatypes" / "middleware.py",
         deep_research_dir / "src" / "datatypes" / "workflow_orchestration.py",
-        deep_research_dir / "src" / "prompts" / "bioinformatics_agent_implementations.py",
+        deep_research_dir
+        / "src"
+        / "prompts"
+        / "bioinformatics_agent_implementations.py",
         deep_research_dir / "src" / "tools" / "bioinformatics_tools.py",
         deep_research_dir / "src" / "utils" / "pydantic_ai_utils.py",
     ]
@@ -90,11 +93,15 @@ def main():
         if file_path.exists():
             replacements = fix_hardcoded_model_defaults(file_path)
             if replacements > 0:
-                print(f"✓ {file_path.relative_to(deep_research_dir.parent)}: {replacements} replacements")
+                print(
+                    f"✓ {file_path.relative_to(deep_research_dir.parent)}: {replacements} replacements"
+                )
                 total_replacements += replacements
                 files_modified += 1
         else:
-            print(f"✗ {file_path.relative_to(deep_research_dir.parent)}: File not found")
+            print(
+                f"✗ {file_path.relative_to(deep_research_dir.parent)}: File not found"
+            )
 
     print(f"\n✓ Total: {total_replacements} replacements across {files_modified} files")
 

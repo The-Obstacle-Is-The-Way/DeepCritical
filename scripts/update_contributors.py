@@ -3,11 +3,9 @@
 Script to update CONTRIBUTORS.md with contributor information from GitHub API.
 """
 
-import base64
 import os
 import sys
-from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any
 
 import requests
 

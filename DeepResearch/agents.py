@@ -15,8 +15,6 @@ from typing import Any, cast
 
 from pydantic_ai import Agent
 
-from .src.utils.config_loader import ModelConfigLoader
-
 from .src.agents.deep_agent_implementations import (
     AgentConfig,
     AgentExecutionResult,
@@ -44,6 +42,7 @@ from .src.prompts.agents import AgentPrompts
 
 # Import existing tools and schemas
 from .src.tools.base import ExecutionResult, registry
+from .src.utils.config_loader import ModelConfigLoader
 
 # Module-level model config loader (lazy-initialized)
 _model_config_loader: ModelConfigLoader | None = None
@@ -106,7 +105,9 @@ class BaseAgent(ABC):
     ):
         self.agent_type = agent_type
         # Use centralized config for model selection
-        self.model_name = model_name if model_name is not None else _get_default_llm_model()
+        self.model_name = (
+            model_name if model_name is not None else _get_default_llm_model()
+        )
         self.dependencies = dependencies or AgentDependencies()
         self.status = AgentStatus.IDLE
         self.history = ExecutionHistory()

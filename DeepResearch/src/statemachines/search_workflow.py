@@ -113,6 +113,7 @@ class PerformWebSearch(BaseNode[SearchWorkflowState]):  # type: ignore[unsupport
 
             # Create SearchAgent with config
             from DeepResearch.src.utils.config_loader import ModelConfigLoader
+
             _config_loader = ModelConfigLoader()
 
             search_config = SearchAgentConfig(

@@ -9,10 +9,7 @@ Tests the 5 ToolRunner classes that wrap MCPServerManager functionality:
 - MCPServerStopTool
 """
 
-import pytest
-
 from DeepResearch.src.datatypes.mcp import (
-    MCPServerConfig,
     MCPServerDeployment,
     MCPServerStatus,
     MCPServerType,
