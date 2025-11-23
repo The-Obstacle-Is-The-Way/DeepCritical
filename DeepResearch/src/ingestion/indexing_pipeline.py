@@ -47,7 +47,9 @@ class IndexingPipeline:
         """Stop background worker."""
         self.running = False
         if self.worker_thread:
-            self.worker_thread.join(timeout=5)
+            self.worker_thread.join()  # Wait indefinitely for clean shutdown
+            if self.worker_thread.is_alive():
+                logger.warning("Worker thread failed to stop gracefully.")
 
     def enqueue_file(self, file_path: str) -> None:
         """Add file to indexing queue."""
@@ -59,25 +61,12 @@ class IndexingPipeline:
 
     async def _remove_file_internal(self, file_path: str) -> None:
         """Remove file from index (internal async)."""
-        # Find all document IDs for this file
-        if hasattr(self.vector_store, "documents"):
-            # Cast for type safety if needed
-            from typing import cast
-
-            docs_dict = cast("dict[str, Document]", self.vector_store.documents)
-            doc_ids = [
-                doc_id
-                for doc_id, doc in docs_dict.items()
-                if doc.metadata.get("file_path") == file_path
-            ]
-            if doc_ids:
-                await self.vector_store.delete_documents(doc_ids)
-
-                # Remove from stats if present
-                if file_path in self.indexed_files:
-                    self.indexed_files.remove(file_path)
-
-                logger.info(f"Removed file {file_path} and {len(doc_ids)} chunks")
+        # Use new VectorStore interface method
+        if await self.vector_store.delete_file(file_path):
+            # Remove from stats if present
+            if file_path in self.indexed_files:
+                self.indexed_files.remove(file_path)
+            logger.info(f"Removed file {file_path}")
 
     def _process_queue(self) -> None:
         """Background worker that processes indexing queue."""
