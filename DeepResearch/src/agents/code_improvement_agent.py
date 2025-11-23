@@ -13,6 +13,24 @@ from typing import Any
 from pydantic_ai import Agent
 
 from DeepResearch.src.datatypes.coding_base import CodeBlock
+from DeepResearch.src.utils.config_loader import ModelConfigLoader
+
+_model_config_loader: ModelConfigLoader | None = None
+
+
+def _get_model_loader() -> ModelConfigLoader:
+    """Lazy-load the model config loader once per process."""
+    global _model_config_loader
+    if _model_config_loader is None:
+        _model_config_loader = ModelConfigLoader()
+    return _model_config_loader
+
+
+def _resolve_model_name(model_name: str | None) -> str:
+    """Resolve a model name using the centralized SSOT configuration."""
+    if model_name:
+        return model_name
+    return _get_model_loader().get_agent_llm_model("code_improvement")
 
 
 class CodeImprovementAgent:
@@ -31,7 +49,7 @@ class CodeImprovementAgent:
             max_improvement_attempts: Maximum number of improvement attempts
             timeout: Timeout for improvement operations
         """
-        self.model_name = model_name
+        self.model_name = _resolve_model_name(model_name)
         self.max_improvement_attempts = max_improvement_attempts
         self.timeout = timeout
 

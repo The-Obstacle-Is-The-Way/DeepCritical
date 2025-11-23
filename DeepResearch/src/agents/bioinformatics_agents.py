@@ -23,6 +23,24 @@ from DeepResearch.src.datatypes.bioinformatics import (
     ReasoningTask,
 )
 from DeepResearch.src.prompts.bioinformatics_agents import BioinformaticsAgentPrompts
+from DeepResearch.src.utils.config_loader import ModelConfigLoader
+
+_model_config_loader: ModelConfigLoader | None = None
+
+
+def _get_model_loader() -> ModelConfigLoader:
+    """Lazy-init the model config loader."""
+    global _model_config_loader
+    if _model_config_loader is None:
+        _model_config_loader = ModelConfigLoader()
+    return _model_config_loader
+
+
+def _resolve_bio_model(model_name: str | None) -> str:
+    """Resolve bioinformatics agent model using SSOT config."""
+    if model_name:
+        return model_name
+    return _get_model_loader().get_agent_llm_model("bioinformatics")
 
 
 class DataFusionAgent:
@@ -33,7 +51,7 @@ class DataFusionAgent:
         model_name: str | None = None,
         config: dict[str, Any] | None = None,
     ):
-        self.model_name = model_name
+        self.model_name = _resolve_bio_model(model_name)
         self.config = config or {}
         self.agent: Agent[BioinformaticsAgentDeps, DataFusionResult] = (
             self._create_agent()
@@ -46,8 +64,9 @@ class DataFusionAgent:
         agents_config = bioinformatics_config.get("agents", {})
         data_fusion_config = agents_config.get("data_fusion", {})
 
-        model_name = data_fusion_config.get("model", self.model_name)
-        model = AnthropicModel(model_name)
+        config_model = data_fusion_config.get("model")
+        resolved_model = _resolve_bio_model(config_model or self.model_name)
+        model = AnthropicModel(resolved_model)
 
         # Get system prompt from config or use default
         system_prompt = data_fusion_config.get(
@@ -83,7 +102,7 @@ class GOAnnotationAgent:
     """Agent for processing GO annotations with PubMed context."""
 
     def __init__(self, model_name: str | None = None):
-        self.model_name = model_name
+        self.model_name = _resolve_bio_model(model_name)
         self.agent: Agent[BioinformaticsAgentDeps, list[GOAnnotation]] = (
             self._create_agent()
         )
@@ -122,7 +141,7 @@ class ReasoningAgent:
     """Agent for performing reasoning tasks on fused bioinformatics data."""
 
     def __init__(self, model_name: str | None = None):
-        self.model_name = model_name
+        self.model_name = _resolve_bio_model(model_name)
         self.agent: Agent[BioinformaticsAgentDeps, ReasoningResult] = (
             self._create_agent()
         )
@@ -166,7 +185,7 @@ class DataQualityAgent:
     """Agent for assessing data quality and consistency."""
 
     def __init__(self, model_name: str | None = None):
-        self.model_name = model_name
+        self.model_name = _resolve_bio_model(model_name)
         self.agent: Agent[BioinformaticsAgentDeps, dict[str, float]] = (
             self._create_agent()
         )
@@ -208,7 +227,7 @@ class BioinformaticsAgent:
     """Main bioinformatics agent that coordinates all bioinformatics operations."""
 
     def __init__(self, model_name: str | None = None):
-        self.model_name = model_name
+        self.model_name = _resolve_bio_model(model_name)
         self.orchestrator = AgentOrchestrator(model_name)
 
     async def process_request(
@@ -242,11 +261,11 @@ class AgentOrchestrator:
     """Orchestrator for coordinating multiple bioinformatics agents."""
 
     def __init__(self, model_name: str | None = None):
-        self.model_name = model_name
-        self.fusion_agent = DataFusionAgent(model_name)
-        self.go_agent = GOAnnotationAgent(model_name)
-        self.reasoning_agent = ReasoningAgent(model_name)
-        self.quality_agent = DataQualityAgent(model_name)
+        self.model_name = _resolve_bio_model(model_name)
+        self.fusion_agent = DataFusionAgent(self.model_name)
+        self.go_agent = GOAnnotationAgent(self.model_name)
+        self.reasoning_agent = ReasoningAgent(self.model_name)
+        self.quality_agent = DataQualityAgent(self.model_name)
 
     async def create_reasoning_dataset(
         self, request: DataFusionRequest, deps: BioinformaticsAgentDeps

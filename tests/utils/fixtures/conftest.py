@@ -6,7 +6,10 @@ from pathlib import Path
 
 import pytest
 
+from DeepResearch.src.utils.config_loader import ModelConfigLoader
 from tests.utils.mocks.mock_data import create_test_directory_structure
+
+_model_config_loader = ModelConfigLoader()
 
 
 @pytest.fixture(scope="session")
@@ -59,7 +62,7 @@ def mock_llm_response():
 def mock_agent_dependencies():
     """Mock agent dependencies for testing."""
     return {
-        "model_name": "anthropic:claude-sonnet-4-0",
+        "model_name": _model_config_loader.get_default_llm_model(),
         "temperature": 0.7,
         "max_tokens": 100,
         "timeout": 30,

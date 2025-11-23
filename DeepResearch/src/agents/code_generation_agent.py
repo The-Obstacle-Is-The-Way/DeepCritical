@@ -18,6 +18,25 @@ from DeepResearch.src.datatypes.agent_framework_types import (
     Role,
 )
 from DeepResearch.src.datatypes.coding_base import CodeBlock
+from DeepResearch.src.utils.config_loader import ModelConfigLoader
+
+_model_config_loader: ModelConfigLoader | None = None
+
+
+def _get_model_loader() -> ModelConfigLoader:
+    """Lazy-init the model config loader to avoid repeated file reads."""
+    global _model_config_loader
+    if _model_config_loader is None:
+        _model_config_loader = ModelConfigLoader()
+    return _model_config_loader
+
+
+def _resolve_model_name(model_name: str | None, agent_key: str) -> str:
+    """Resolve a model name using the centralized SSOT configuration."""
+    if model_name:
+        return model_name
+    loader = _get_model_loader()
+    return loader.get_agent_llm_model(agent_key)
 
 
 class CodeGenerationAgent:
@@ -36,7 +55,7 @@ class CodeGenerationAgent:
             max_retries: Maximum number of generation retries
             timeout: Timeout for generation
         """
-        self.model_name = model_name
+        self.model_name = _resolve_model_name(model_name, "code_generation")
         self.max_retries = max_retries
         self.timeout = timeout
 
@@ -312,7 +331,7 @@ class CodeExecutionAgent:
             max_retries: Maximum execution retries
             timeout: Execution timeout
         """
-        self.model_name = model_name
+        self.model_name = _resolve_model_name(model_name, "code_execution")
         self.use_docker = use_docker
         self.use_jupyter = use_jupyter
         self.jupyter_config = jupyter_config or {}
