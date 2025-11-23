@@ -34,6 +34,7 @@ from pydantic_ai import Agent, RunContext
 from pydantic_ai.tools import Tool
 
 # Import DeepCritical types
+from ..utils.config_loader import ModelConfigLoader
 from .agents import AgentDependencies
 from .mcp import (
     MCPAgentIntegration,
