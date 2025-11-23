@@ -3,11 +3,15 @@
 from pydantic_ai import Agent, RunContext
 
 from DeepResearch.src.tools.mgrep_server import MgrepServer
+from DeepResearch.src.utils.config_loader import ModelConfigLoader
 from examples.mgrep_semantic_search.mgrep_deps import MgrepDeps
+
+# Load model from config
+_model_config = ModelConfigLoader()
 
 # Create agent (matches genomics_agent.py pattern)
 mgrep_agent = Agent[MgrepDeps, str](
-    model="anthropic:claude-sonnet-4-0",
+    model=_model_config.get_default_llm_model(),
     deps_type=MgrepDeps,
     output_type=str,  # Agent will return a string summary
     system_prompt="""You are a code search assistant that helps find relevant code.
