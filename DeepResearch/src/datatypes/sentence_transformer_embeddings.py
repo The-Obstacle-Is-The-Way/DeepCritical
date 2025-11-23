@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import threading  # Keep threading for the Lock
 from typing import Any
 
 from sentence_transformers import SentenceTransformer  # type: ignore
@@ -27,11 +28,15 @@ class SentenceTransformerEmbeddings(Embeddings):
         self.device = config.device or "cpu"
         self.batch_size = config.batch_size
         self.query_instruction = config.query_instruction
+        # Lock to ensure thread safety for the underlying model,
+        # as we share one instance across threads (e.g. indexing vs searching).
+        self._lock = threading.Lock()
 
     @property
     def model(self) -> SentenceTransformer:
         """Lazy load the model."""
         if self._model is None:
+            # ... (same as before)
             try:
                 logger.info(
                     f"Loading sentence-transformers model '{self.model_name}' on {self.device}..."
@@ -64,8 +69,6 @@ class SentenceTransformerEmbeddings(Embeddings):
     async def vectorize_query(self, text: str) -> list[float]:
         """Generate query embedding asynchronously."""
         if not text.strip():
-            # Return zero vector or raise? ABC says return list[float].
-            # Raise to be safe.
             raise ValueError("Cannot vectorize empty query")
 
         result = await asyncio.to_thread(self._encode_sync, [text], is_query=True)
@@ -77,13 +80,14 @@ class SentenceTransformerEmbeddings(Embeddings):
         if is_query and self.query_instruction:
             texts = [f"{self.query_instruction}{t}" for t in texts]
 
-        embeddings = self.model.encode(
-            texts,
-            batch_size=self.batch_size,
-            show_progress_bar=False,
-            convert_to_numpy=True,
-            normalize_embeddings=True,
-        )
+        with self._lock:
+            embeddings = self.model.encode(
+                texts,
+                batch_size=self.batch_size,
+                show_progress_bar=False,
+                convert_to_numpy=True,
+                normalize_embeddings=True,
+            )
         return embeddings.tolist()
 
     def vectorize_documents_sync(self, document_chunks: list[str]) -> list[list[float]]:

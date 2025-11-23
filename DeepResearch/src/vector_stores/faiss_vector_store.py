@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import os
 import pickle
@@ -287,6 +288,25 @@ class FAISSVectorStore(VectorStore):
     ) -> list[SearchResult]:
         """
         Searches the vector store for a given query.
+        """
+        # Offload the blocking search operation to a separate thread
+        return await asyncio.to_thread(
+            self._search_with_embeddings_sync,
+            query_embedding,
+            search_type,
+            retrieval_query,
+            **kwargs,
+        )
+
+    def _search_with_embeddings_sync(
+        self,
+        query_embedding: list[float],
+        search_type: SearchType,
+        retrieval_query: str | None = None,
+        **kwargs: Any,
+    ) -> list[SearchResult]:
+        """
+        Synchronous search implementation, to be run in a separate thread.
         """
         with self._lock:
             if self.index is None:

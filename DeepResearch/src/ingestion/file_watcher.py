@@ -43,7 +43,7 @@ class FileWatcher:
             initial_scan: If True, crawl and index existing files before watching.
         """
         if initial_scan:
-            self._initial_crawl()
+            self.scan_all()
 
         for path in self.watch_paths:
             self.observer.schedule(
@@ -51,27 +51,56 @@ class FileWatcher:
             )
         self.observer.start()
 
-    def _initial_crawl(self) -> None:
+    def scan_all(self) -> None:
         """Index all existing files in watch paths."""
+        import os
         from pathlib import Path
 
         logger.info("Starting initial crawl of watch paths...")
         count = 0
+
+        # Common directories to always exclude for performance/safety
+        IGNORED_DIRS = {
+            ".git",
+            ".venv",
+            "venv",
+            "node_modules",
+            "__pycache__",
+            "site",
+            ".mypy_cache",
+            ".pytest_cache",
+            ".ruff_cache",
+            "htmlcov",
+        }
+
         for watch_path in self.watch_paths:
-            path_obj = Path(watch_path)
-            if not path_obj.exists():
+            if not os.path.exists(watch_path):
                 logger.warning(f"Watch path does not exist: {watch_path}")
                 continue
 
-            # Choose glob pattern based on recursive flag
-            iterator = path_obj.rglob("*") if self.recursive else path_obj.glob("*")
+            if self.recursive:
+                for root, dirs, files in os.walk(watch_path):
+                    # Prune directories to prevent traversing massive ignored folders
+                    dirs[:] = [d for d in dirs if d not in IGNORED_DIRS]
 
-            for file_path in iterator:
-                if file_path.is_file() and self.file_filter.should_index(
-                    str(file_path)
-                ):
-                    self.indexing_pipeline.enqueue_file(str(file_path))
-                    count += 1
+                    # Additional check: if a directory is gitignored, prune it?
+                    # This is expensive to check for every dir if the matcher is slow,
+                    # but safer. For now, rely on IGNORED_DIRS and file filtering.
+
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        if self.file_filter.should_index(file_path):
+                            self.indexing_pipeline.enqueue_file(file_path)
+                            count += 1
+            else:
+                # Non-recursive: just list the directory
+                path_obj = Path(watch_path)
+                for file_path in path_obj.glob("*"):
+                    if file_path.is_file() and self.file_filter.should_index(
+                        str(file_path)
+                    ):
+                        self.indexing_pipeline.enqueue_file(str(file_path))
+                        count += 1
 
         logger.info(f"Initial crawl complete. Enqueued {count} files.")
 

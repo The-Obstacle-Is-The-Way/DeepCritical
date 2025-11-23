@@ -1,0 +1,37 @@
+# Mgrep Tool Configuration
+enabled: true
+data_path: "data/mgrep"
+reset_on_start: true  # Clear persisted FAISS index/doc store for clean demo runs
+# Limit scope for demo/testing to avoid indexing massive venvs/caches
+watch_paths:
+  - "DeepResearch/src/vector_stores"
+  - "DeepResearch/src/ingestion"
+allowed_extensions:
+  - ".py"
+  - ".md"
+  - ".txt"
+  - ".yml"
+  - ".yaml"
+  - ".json"
+exclude_patterns:
+  - "**/__pycache__/**"
+  - "**/node_modules/**"
+  - "**/venv/**"
+  - "**/.git/**"
+  - "**/site/**"
+
+embeddings:
+  model_type: "sentence_transformers"
+  model_name: "all-MiniLM-L6-v2"
+  device: "cpu"
+  batch_size: 32
+
+vector_store:
+  store_type: "faiss"
+  embedding_dimension: 384
+  index_path: "data/mgrep/faiss_index.bin"
+  data_path: "data/mgrep/doc_store.pkl"
+
+indexing:
+  batch_size: 50
+  initial_scan: true
