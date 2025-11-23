@@ -13,15 +13,8 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"  # Prevent fork deadlock warnings
 import asyncio
 import logging
 import sys
-from pathlib import Path
 
-from dotenv import load_dotenv
-
-load_dotenv()
-
-sys.path.append(str(Path(__file__).parents[2]))
-
-from DeepResearch.src.tools.mgrep_server import MgrepServer  # noqa: E402
+from DeepResearch.src.tools.mgrep_server import MgrepServer
 
 logging.basicConfig(
     level=logging.INFO,

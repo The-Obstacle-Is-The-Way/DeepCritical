@@ -24,17 +24,8 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"  # Prevent fork deadlock warnings
 
 import asyncio
 import sys
-from pathlib import Path
 
-from dotenv import load_dotenv
-
-# Load environment variables (ANTHROPIC_API_KEY)
-load_dotenv()
-
-# Add project root to sys.path
-sys.path.append(str(Path(__file__).parents[2]))
-
-from examples.mgrep_semantic_search.mgrep_agent import run_mgrep_analysis  # noqa: E402
+from examples.mgrep_semantic_search.mgrep_agent import run_mgrep_analysis
 
 
 async def main() -> None:
