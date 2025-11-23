@@ -24,6 +24,7 @@ from DeepResearch.src.datatypes.mcp import (
     MCPServerStatus,
     MCPServerType,
 )
+from DeepResearch.src.utils.config_loader import ModelConfigLoader
 
 if TYPE_CHECKING:
     from pydantic_ai.tools import Tool
@@ -423,7 +424,7 @@ class BCFtoolsServer(MCPServerBase):
         """Get or create a Pydantic AI agent with bcftools tools."""
         if self._pydantic_ai_agent is None:
             self._pydantic_ai_agent = Agent(
-                model="openai:gpt-4",  # Default model, can be configured
+                model=ModelConfigLoader().get_default_llm_model(),
                 tools=self.get_pydantic_ai_tools(),
                 system_prompt=(
                     "You are a BCFtools expert. You can perform various operations on VCF/BCF files "

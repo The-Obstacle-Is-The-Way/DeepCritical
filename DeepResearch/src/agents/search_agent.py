@@ -26,6 +26,7 @@ from DeepResearch.src.tools.integrated_search_tools import (
     rag_search_tool,
 )
 from DeepResearch.src.tools.websearch_tools import chunked_search_tool, web_search_tool
+from DeepResearch.src.utils.config_loader import ModelConfigLoader
 
 
 class SearchAgent:
@@ -33,8 +34,14 @@ class SearchAgent:
 
     def __init__(self, config: SearchAgentConfig):
         self.config = config
+        # Resolve model name using SSOT
+        # If config.model is None, fall back to agent-specific or default model
+        self.model_name = config.model or ModelConfigLoader().get_agent_llm_model(
+            "search"
+        )
+
         self.agent = Agent[SearchAgentDependencies, str](
-            model=config.model,
+            model=self.model_name,
             deps_type=SearchAgentDependencies,
             system_prompt=self._get_system_prompt(),
             tools=[
@@ -114,7 +121,7 @@ class SearchAgent:
     def create_rag_agent(self) -> Agent:
         """Create a specialized RAG agent for vector store integration."""
         return Agent(
-            model=self.config.model,
+            model=self.model_name,
             system_prompt=SearchAgentPrompts.RAG_SEARCH_SYSTEM,
             tools=[rag_search_tool, integrated_search_tool],
         )
@@ -123,8 +130,8 @@ class SearchAgent:
 # Example usage functions
 async def example_basic_search():
     """Example of basic search functionality."""
+    # Use SSOT default model (None)
     config = SearchAgentConfig(
-        model="gpt-4",
         enable_analytics=True,
         default_search_type="search",
         default_num_results=3,
@@ -143,8 +150,9 @@ async def example_basic_search():
 
 async def example_rag_search():
     """Example of RAG-optimized search."""
+    # Use SSOT default model (None)
     config = SearchAgentConfig(
-        model="gpt-4", enable_analytics=True, chunk_size=1000, chunk_overlap=100
+        enable_analytics=True, chunk_size=1000, chunk_overlap=100
     )
 
     agent = SearchAgent(config)

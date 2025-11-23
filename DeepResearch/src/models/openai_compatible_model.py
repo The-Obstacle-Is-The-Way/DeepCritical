@@ -24,6 +24,7 @@ from DeepResearch.src.datatypes.llm_models import (
     LLMModelConfig,
     LLMProvider,
 )
+from DeepResearch.src.utils.config_loader import ModelConfigLoader
 
 
 class OpenAICompatibleModel(OpenAIChatModel):
@@ -60,6 +61,9 @@ class OpenAICompatibleModel(OpenAIChatModel):
         Returns:
             Configured OpenAICompatibleModel instance.
         """
+        # SSOT: Get default model
+        default_model = ModelConfigLoader().get_default_llm_model()
+
         # If already a validated LLMModelConfig, use it
         if isinstance(config, LLMModelConfig):
             validated_config = config
@@ -80,7 +84,7 @@ class OpenAICompatibleModel(OpenAIChatModel):
             model_name_value = (
                 model_name
                 or config.get("model_name")
-                or config.get("model", {}).get("name", "gpt-3.5-turbo")
+                or config.get("model", {}).get("name", default_model)
             )
             base_url_value = (
                 base_url or config.get("base_url") or os.getenv("LLM_BASE_URL", "")
@@ -96,7 +100,7 @@ class OpenAICompatibleModel(OpenAIChatModel):
                     else LLMProvider.CUSTOM
                 ),
                 "model_name": (
-                    str(model_name_value) if model_name_value else "gpt-3.5-turbo"
+                    str(model_name_value) if model_name_value else default_model
                 ),
                 "base_url": str(base_url_value) if base_url_value else "",
                 "api_key": api_key or config.get("api_key") or os.getenv("LLM_API_KEY"),

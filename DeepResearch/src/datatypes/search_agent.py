@@ -11,7 +11,9 @@ from pydantic import BaseModel, ConfigDict, Field
 class SearchAgentConfig(BaseModel):
     """Configuration for the search agent."""
 
-    model: str = Field("gpt-4", description="Model to use for the agent")
+    model: str | None = Field(
+        None, description="Model to use for the agent. If None, uses SSOT default."
+    )
     enable_analytics: bool = Field(
         True, description="Whether to enable analytics tracking"
     )
