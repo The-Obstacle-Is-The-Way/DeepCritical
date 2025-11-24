@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import threading  # Keep threading for the Lock
+from typing import cast
 
 from sentence_transformers import SentenceTransformer  # type: ignore
 
@@ -29,30 +30,34 @@ class SentenceTransformerEmbeddings(Embeddings):
         self.query_instruction = config.query_instruction
         # Lock to ensure thread safety for the underlying model,
         # as we share one instance across threads (e.g. indexing vs searching).
-        self._lock = threading.Lock()
+        # Use RLock to allow reentrant acquisition (e.g. _encode_sync -> model -> lock)
+        self._lock = threading.RLock()
 
     @property
     def model(self) -> SentenceTransformer:
         """Lazy load the model."""
         if self._model is None:
-            # ... (same as before)
-            try:
-                logger.info(
-                    f"Loading sentence-transformers model '{self.model_name}' on {self.device}..."
-                )
-                self._model = SentenceTransformer(self.model_name, device=self.device)
-                logger.info(
-                    f"Loaded model '{self.model_name}' "
-                    f"(dim: {self._model.get_sentence_embedding_dimension()})"
-                )
-            except Exception as e:
-                logger.error(
-                    f"Failed to load sentence-transformers model '{self.model_name}': {e}\n"
-                    f"Try manual download:\n"
-                    f"  python -m sentence_transformers.download '{self.model_name}'"
-                )
-                raise
-        return self._model
+            with self._lock:
+                if self._model is None:
+                    try:
+                        logger.info(
+                            f"Loading sentence-transformers model '{self.model_name}' on {self.device}..."
+                        )
+                        self._model = SentenceTransformer(
+                            self.model_name, device=self.device
+                        )
+                        logger.info(
+                            f"Loaded model '{self.model_name}' "
+                            f"(dim: {self._model.get_sentence_embedding_dimension()})"
+                        )
+                    except Exception as e:
+                        logger.error(
+                            f"Failed to load sentence-transformers model '{self.model_name}': {e}\n"
+                            f"Try manual download:\n"
+                            f"  python -m sentence_transformers.download '{self.model_name}'"
+                        )
+                        raise
+        return cast("SentenceTransformer", self._model)
 
     async def vectorize_documents(
         self, document_chunks: list[str]
