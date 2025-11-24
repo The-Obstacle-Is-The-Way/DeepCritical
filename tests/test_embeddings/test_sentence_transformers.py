@@ -1,3 +1,5 @@
+import threading
+import time
 from unittest.mock import patch
 
 import numpy as np
@@ -106,3 +108,27 @@ async def test_empty_input(embeddings):
 
     vectors = await embeddings.vectorize_documents([])
     assert vectors == []
+
+
+def test_lazy_model_load_thread_safe(config, mock_sentence_transformer):
+    """Ensure lazy model init happens exactly once under concurrency."""
+
+    # Slow down instantiation to widen the race window
+    def delayed_model(*args, **kwargs):
+        time.sleep(0.01)
+        return mock_sentence_transformer.return_value
+
+    mock_sentence_transformer.side_effect = delayed_model
+    embeddings = SentenceTransformerEmbeddings(config)
+
+    def access_model():
+        _ = embeddings.model
+
+    threads = [threading.Thread(target=access_model) for _ in range(10)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=1)
+        assert not thread.is_alive(), "Thread hung while acquiring model lock"
+
+    assert mock_sentence_transformer.call_count == 1
