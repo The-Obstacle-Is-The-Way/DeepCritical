@@ -284,7 +284,3 @@ I contributed several high-quality PRs to the upstream project:
 Those contributions were **vertical slices with tests**. They were absorbed into a horizontal mess. I regret contributing professional-grade work to a project that doesn't maintain professional standards.
 
 This fork is archived. I may extract the working components I built and start fresh with proper architecture.
-
----
-
-*"The first rule of building AI agents: if you can't test it end-to-end, it doesn't work."*

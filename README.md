@@ -176,7 +176,3 @@ They were absorbed into horizontal bloat. I regret contributing professional wor
 ## License
 
 Original upstream code is GPL-3.0. My contributions remain under that license.
-
----
-
-*"The first rule of building AI agents: if you can't test it end-to-end, it doesn't work."*
