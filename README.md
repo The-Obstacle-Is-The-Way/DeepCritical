@@ -34,7 +34,7 @@ This codebase exposes **100-200+ tools** to the LLM. Research shows this fundame
 > "Having too many tools exposed can degrade the performances and the output of your LLM!"
 > — [Stefano Demiliani](https://demiliani.com/2025/09/04/model-context-protocol-and-the-too-many-tools-problem/)
 
-**Cursor IDE hard-limits MCP tools to 40.** This codebase has 5x that.
+**Cursor IDE hard-limits MCP tools to 40.** With 28 servers averaging 5-10 tools each, this codebase exposes 140-280 tools—far beyond that limit.
 
 ---
 
