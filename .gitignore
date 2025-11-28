@@ -57,6 +57,9 @@ tests/fixtures/gatk/cache/
 examples/simple_genomics_discovery/data/
 examples/simple_genomics_discovery/output/
 
+# Generated vector store data (FAISS indices, doc stores)
+data/
+
 # Environments
 .env
 .venv
