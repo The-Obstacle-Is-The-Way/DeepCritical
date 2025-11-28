@@ -67,11 +67,14 @@ Result: The model spends most of its context understanding WHAT it can do,
         leaving minimal room for HOW to do it well.
 ```
 
-**The "Lost in the Middle" phenomenon** is well-documented: LLMs perform best when important information is at the beginning or end of context, not buried in the middle. With 200+ tool definitions, critical tools get lost.
+**The "Lost in the Middle" phenomenon** is well-documented in peer-reviewed research. From [Liu et al., Stanford/Berkeley, 2024](https://arxiv.org/abs/2307.03172):
+
+> "Performance is often highest when relevant information occurs at the beginning or end of the input context, and significantly degrades when models must access relevant information in the middle of long contexts."
+
+With 140-280 tool definitions, critical tools get buried in the middle where attention degrades.
 
 Sources:
-- [Google DeepMind: Long Context Window Explained](https://blog.google/technology/ai/long-context-window-ai-models/)
-- [Understanding LLM Context Windows](https://medium.com/@adityakamat007/understanding-llm-context-windows-why-400k-tokens-doesnt-mean-what-you-think-918704d04085)
+- [Lost in the Middle: How Language Models Use Long Contexts (arXiv)](https://arxiv.org/abs/2307.03172) - Liu et al., 2024
 - [SEP-1576: Mitigating Token Bloat in MCP](https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1576)
 
 ---

@@ -42,18 +42,18 @@ This codebase exposes **100-200+ tools** to the LLM. Research shows this fundame
 
 Current LLM context windows (2025):
 
-| Model | Context Window |
-|-------|----------------|
-| Gemini 2.5 Pro | 1,000,000 tokens |
-| Gemini 1.5 Pro | 2,000,000 tokens |
-| Claude 3.5 | 200,000 tokens |
-| GPT-4 Turbo | 128,000 tokens |
+| Model | Context Window | Source |
+|-------|----------------|--------|
+| Gemini 2.5 Pro | 1,000,000 tokens | [Google DeepMind](https://deepmind.google/technologies/gemini/pro/) |
+| Claude Sonnet 4.5 | 1,000,000 tokens (beta) | [Anthropic](https://www.anthropic.com/claude/sonnet) |
+| Claude 3.5 Sonnet | 200,000 tokens | [Anthropic](https://www.anthropic.com/news/claude-3-5-sonnet) |
+| GPT-4 Turbo | 128,000 tokens | [OpenAI](https://openai.com/index/new-models-and-developer-products-announced-at-devday/) |
 
-**The problem isn't context size.** It's the ["Lost in the Middle" phenomenon](https://medium.com/@adityakamat007/understanding-llm-context-windows-why-400k-tokens-doesnt-mean-what-you-think-918704d04085):
+**The problem isn't context size.** It's the ["Lost in the Middle" phenomenon](https://arxiv.org/abs/2307.03172) (Liu et al., Stanford/Berkeley, 2024):
 
-> "LLMs perform best when important information is at the beginning or end of the context, not buried in the middle."
+> "Performance is often highest when relevant information occurs at the beginning or end of the input context, and significantly degrades when models must access relevant information in the middle of long contexts."
 
-With 200+ tool definitions, critical tools get buried. Even with Gemini's 2M tokens, **the model spends its attention budget parsing tool schemas instead of reasoning about the task**.
+With 140-280 tool definitions, critical tools get buried in the middle. Even with 1M+ tokens, **the model's attention degrades for middle-positioned information**—this is a fundamental architectural limitation, not a context size problem.
 
 The computational cost also scales **O(n²)** with context length. Doubling context quadruples inference cost.
 
@@ -167,7 +167,7 @@ They were absorbed into horizontal bloat. I regret contributing professional wor
 - [State of AI Agents in 2025](https://carlrannaberg.medium.com/state-of-ai-agents-in-2025-5f11444a5c78)
 
 ### Context Window Research
-- [Understanding LLM Context Windows](https://medium.com/@adityakamat007/understanding-llm-context-windows-why-400k-tokens-doesnt-mean-what-you-think-918704d04085)
+- [Lost in the Middle: How Language Models Use Long Contexts (arXiv)](https://arxiv.org/abs/2307.03172) - Liu et al., Stanford/Berkeley, 2024
 - [Gemini Long Context Explained](https://ai.google.dev/gemini-api/docs/long-context)
 - [Google DeepMind: Long Context Windows](https://blog.google/technology/ai/long-context-window-ai-models/)
 
