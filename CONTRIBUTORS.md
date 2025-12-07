@@ -21,6 +21,7 @@ Thank you to all the amazing people who contribute to DeepCritical! 🎉
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/EmployeeNo427"><img src="https://avatars.githubusercontent.com/u/45109567?v=4?s=100" width="100px;" alt="Employee_NO427"/><br /><sub><b>Employee_NO427</b></sub></a><br /><a href="https://github.com/The-Obstacle-Is-The-Way/DeepCritical/commits?author=EmployeeNo427" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/dronefreak"><img src="https://avatars.githubusercontent.com/u/31608692?v=4?s=100" width="100px;" alt="Saumya Kumaar Saksena"/><br /><sub><b>Saumya Kumaar Saksena</b></sub></a><br /><a href="https://github.com/The-Obstacle-Is-The-Way/DeepCritical/commits?author=dronefreak" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/afg1"><img src="https://avatars.githubusercontent.com/u/623671?v=4?s=100" width="100px;" alt="Andrew Green"/><br /><sub><b>Andrew Green</b></sub></a><br /><a href="https://github.com/The-Obstacle-Is-The-Way/DeepCritical/commits?author=afg1" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/actions-user"><img src="https://avatars.githubusercontent.com/u/65916846?v=4?s=100" width="100px;" alt="None"/><br /><sub><b>None</b></sub></a><br /><a href="https://github.com/The-Obstacle-Is-The-Way/DeepCritical/commits?author=actions-user" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
